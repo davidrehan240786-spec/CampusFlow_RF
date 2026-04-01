@@ -1,0 +1,107 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-brand-bg-top: #000000;
+  --color-brand-bg-bottom: #000000;
+  --color-brand-card: rgba(255, 255, 255, 0.03);
+  --color-brand-border: rgba(255, 255, 255, 0.08);
+  --color-brand-text-secondary: #949494;
+  --color-brand-text-muted: #525252;
+
+  --color-background: #000000;
+  --color-foreground: #ffffff;
+  --color-primary: #ffffff;
+  --color-primary-foreground: #000000;
+  --color-secondary: #171717;
+  --color-secondary-foreground: #ffffff;
+  --color-muted: #171717;
+  --color-muted-foreground: #737373;
+  --color-accent: #171717;
+  --color-accent-foreground: #ffffff;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #262626;
+  --color-input: #262626;
+  --color-ring: #ffffff;
+
+  --max-w-container: 1280px;
+  --animate-marquee: marquee var(--duration) linear infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-100% - var(--gap))); }
+  }
+}
+
+@layer base {
+  body {
+    @apply text-white font-sans antialiased selection:bg-white/20;
+    background: #000000;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-brand-card backdrop-blur-md border border-brand-border;
+  }
+  
+  .glow-orb {
+    background: radial-gradient(
+      circle at center,
+      rgba(99, 102, 241, 0.15) 0%,
+      rgba(255, 255, 255, 0.05) 40%,
+      transparent 70%
+    );
+    filter: blur(100px);
+  }
+
+  .text-secondary {
+    @apply text-brand-text-secondary;
+  }
+
+  .text-muted {
+    @apply text-brand-text-muted;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 6s infinite ease-in-out;
+}
+
+@keyframes dash {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-dash-line {
+  stroke-dasharray: 5 5;
+  animation: dash 2s linear infinite;
+}
+
+/* Scroll Animations */
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  will-change: opacity, transform;
+}
+
+.animate-on-scroll.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
