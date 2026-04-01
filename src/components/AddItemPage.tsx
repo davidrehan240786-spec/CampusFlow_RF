@@ -17,13 +17,16 @@ import {
   DollarSign
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/toast-context";
+import { db, auth, addDoc, collection, serverTimestamp, handleFirestoreError, OperationType } from "../firebase";
+
+import { useAuth } from "../context/AuthContext";
 
 // --- Types ---
 
@@ -52,7 +55,9 @@ const TIME_SLOTS = ["Morning (8AM - 12PM)", "Afternoon (12PM - 4PM)", "Evening (
 export default function AddItemPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<ItemData>({
     title: "",
@@ -126,8 +131,19 @@ export default function AddItemPage() {
     if (formData.images.length <= 1) setSmartAssist(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!auth.currentUser) {
+      toast({
+        title: "Authentication Required",
+        message: "Please sign in to post an item.",
+        variant: "destructive"
+      });
+      navigate("/login");
+      return;
+    }
+
     if (!formData.title || (!formData.price && !formData.isFree)) {
       toast({
         title: "Missing Fields",
@@ -137,12 +153,42 @@ export default function AddItemPage() {
       return;
     }
 
-    toast({
-      title: "Success!",
-      message: "Your item has been posted to the marketplace.",
-      variant: "success"
-    });
-    navigate("/dashboard");
+    setIsSubmitting(true);
+    try {
+      const itemData = {
+        name: formData.title,
+        description: formData.description,
+        price: formData.isFree ? 0 : parseFloat(formData.price),
+        category: formData.category,
+        location: formData.location,
+        image: formData.images[0] || "https://picsum.photos/seed/item/800/600",
+        sellerId: auth.currentUser.uid,
+        sellerName: profile?.displayName || auth.currentUser.displayName || "Anonymous Student",
+        status: "available",
+        trending: false,
+        views: 0,
+        interest: 0,
+        createdAt: serverTimestamp(),
+        meetupLocation: formData.meetupLocation,
+        meetupTime: formData.meetupTime,
+        tags: formData.tags,
+        condition: formData.condition,
+        allowPhone: formData.allowPhone
+      };
+
+      await addDoc(collection(db, "marketplace"), itemData);
+
+      toast({
+        title: "Success!",
+        message: "Your item has been posted to the marketplace.",
+        variant: "success"
+      });
+      navigate("/dashboard");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "marketplace");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -522,9 +568,17 @@ export default function AddItemPage() {
               <div className="pt-10 flex flex-col md:flex-row gap-4">
                 <Button 
                   type="submit"
-                  className="flex-1 h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)]"
+                  disabled={isSubmitting}
+                  className="flex-1 h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Post Item
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="size-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                      <span>Posting...</span>
+                    </div>
+                  ) : (
+                    "Post Item"
+                  )}
                 </Button>
                 <Button 
                   type="button"

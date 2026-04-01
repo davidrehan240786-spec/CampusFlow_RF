@@ -18,7 +18,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/lib/toast-context";
+import { db, auth, addDoc, collection, serverTimestamp, handleFirestoreError, OperationType } from "../firebase";
+
+import { useAuth } from "../context/AuthContext";
 
 interface LostItemData {
   title: string;
@@ -47,7 +50,9 @@ const TAG_OPTIONS = ["Urgent", "Sentimental", "High Value"];
 export default function ReportLostPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<LostItemData>({
     title: "",
@@ -110,8 +115,19 @@ export default function ReportLostPage() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!auth.currentUser) {
+      toast({
+        title: "Authentication Required",
+        message: "Please sign in to report an item.",
+        variant: "destructive"
+      });
+      navigate("/login");
+      return;
+    }
+
     if (!formData.title || !formData.location || !formData.dateLost) {
       toast({
         title: "Missing Fields",
@@ -121,12 +137,39 @@ export default function ReportLostPage() {
       return;
     }
 
-    toast({
-      title: "Report Submitted",
-      message: "Your lost item report has been published. We'll notify you of any matches!",
-      variant: "success"
-    });
-    navigate("/dashboard");
+    setIsSubmitting(true);
+    try {
+      const reportData = {
+        type: "lost",
+        name: formData.title,
+        description: formData.description,
+        location: formData.location,
+        dateLost: formData.dateLost,
+        image: formData.images[0] || "https://picsum.photos/seed/lost/800/600",
+        reporterId: auth.currentUser.uid,
+        reporterName: profile?.displayName || auth.currentUser.displayName || "Anonymous Student",
+        status: "active",
+        createdAt: serverTimestamp(),
+        category: formData.category,
+        tags: formData.tags,
+        reward: formData.reward,
+        contactMethod: formData.contactMethod,
+        phoneNumber: formData.phoneNumber
+      };
+
+      await addDoc(collection(db, "lostfound"), reportData);
+
+      toast({
+        title: "Report Submitted",
+        message: "Your lost item report has been published. We'll notify you of any matches!",
+        variant: "success"
+      });
+      navigate("/dashboard");
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "lostfound");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -335,9 +378,17 @@ export default function ReportLostPage() {
               <div className="pt-10">
                 <Button 
                   type="submit"
-                  className="w-full h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)]"
+                  disabled={isSubmitting}
+                  className="w-full h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Submit Report
+                  {isSubmitting ? (
+                    <div className="flex items-center gap-2">
+                      <div className="size-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                      <span>Submitting...</span>
+                    </div>
+                  ) : (
+                    "Submit Report"
+                  )}
                 </Button>
               </div>
 

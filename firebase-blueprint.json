@@ -2,129 +2,77 @@
   "entities": {
     "User": {
       "title": "User",
-      "description": "A campus student user profile.",
+      "description": "User profile and role information",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "The unique ID of the user." },
-        "displayName": { "type": "string", "description": "The user's full name." },
-        "email": { "type": "string", "format": "email", "description": "The user's campus email." },
-        "photoURL": { "type": "string", "format": "uri", "description": "The user's profile picture URL." },
-        "trustScore": { "type": "number", "description": "The user's trust score (0-100)." },
-        "role": { "type": "string", "enum": ["user", "admin"], "description": "The user's role." },
-        "verified": { "type": "boolean", "description": "Whether the user is a verified student." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the user account was created." }
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string", "description": "User's full name" },
+        "email": { "type": "string", "format": "email", "description": "User's email address" },
+        "role": { "type": "string", "enum": ["student", "staff", "admin"], "description": "User's role in the system" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" }
       },
       "required": ["uid", "displayName", "email", "role"]
     },
     "MarketplaceItem": {
-      "title": "MarketplaceItem",
-      "description": "An item listed for sale or trade in the marketplace.",
+      "title": "Marketplace Item",
+      "description": "An item listed for sale in the campus marketplace",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "The unique ID of the item." },
-        "name": { "type": "string", "description": "The name of the item." },
-        "description": { "type": "string", "description": "A detailed description of the item." },
-        "price": { "type": "number", "description": "The price of the item." },
-        "category": { "type": "string", "description": "The category of the item (e.g., Books, Electronics)." },
-        "location": { "type": "string", "description": "The campus location where the item is available." },
-        "image": { "type": "string", "format": "uri", "description": "The URL of the item's image." },
-        "sellerId": { "type": "string", "description": "The UID of the seller." },
-        "sellerName": { "type": "string", "description": "The name of the seller." },
-        "status": { "type": "string", "enum": ["available", "sold", "pending"], "description": "The current status of the item." },
-        "trending": { "type": "boolean", "description": "Whether the item is currently trending." },
-        "views": { "type": "number", "description": "The number of views the item has received." },
-        "interest": { "type": "number", "description": "The number of users who have expressed interest." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the item was listed." }
+        "name": { "type": "string", "description": "Item title" },
+        "description": { "type": "string", "description": "Item description" },
+        "price": { "type": "string", "description": "Item price" },
+        "category": { "type": "string", "description": "Item category" },
+        "location": { "type": "string", "description": "Pickup location" },
+        "condition": { "type": "string", "description": "Item condition" },
+        "image": { "type": "string", "description": "Main item image URL" },
+        "sellerId": { "type": "string", "description": "UID of the seller" },
+        "sellerName": { "type": "string", "description": "Name of the seller" },
+        "status": { "type": "string", "enum": ["active", "sold", "deleted"], "description": "Listing status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Listing creation timestamp" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Item tags" },
+        "allowPhone": { "type": "boolean", "description": "Whether phone contact is enabled" },
+        "phoneNumber": { "type": "string", "description": "Seller's phone number" }
       },
-      "required": ["name", "price", "category", "sellerId", "status"]
+      "required": ["name", "category", "location", "sellerId", "status"]
     },
-    "LostFoundItem": {
-      "title": "LostFoundItem",
-      "description": "An item reported as lost or found on campus.",
+    "LostFoundReport": {
+      "title": "Lost & Found Report",
+      "description": "A report for a lost or found item",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "The unique ID of the report." },
-        "type": { "type": "string", "enum": ["lost", "found"], "description": "Whether the item is lost or found." },
-        "name": { "type": "string", "description": "The name of the item." },
-        "description": { "type": "string", "description": "A description of the item and where it was lost/found." },
-        "location": { "type": "string", "description": "The campus location where the item was lost/found." },
-        "image": { "type": "string", "format": "uri", "description": "An optional image of the item." },
-        "reporterId": { "type": "string", "description": "The UID of the person reporting the item." },
-        "status": { "type": "string", "enum": ["active", "resolved"], "description": "The current status of the report." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the report was created." }
+        "type": { "type": "string", "enum": ["lost", "found"], "description": "Report type" },
+        "name": { "type": "string", "description": "Item name" },
+        "description": { "type": "string", "description": "Item description" },
+        "location": { "type": "string", "description": "Location where lost or found" },
+        "dateLost": { "type": "string", "description": "Date when item was lost" },
+        "dateFound": { "type": "string", "description": "Date when item was found" },
+        "image": { "type": "string", "description": "Item image URL" },
+        "reporterId": { "type": "string", "description": "UID of the reporter" },
+        "reporterName": { "type": "string", "description": "Name of the reporter" },
+        "status": { "type": "string", "enum": ["active", "resolved", "deleted"], "description": "Report status" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Report creation timestamp" },
+        "category": { "type": "string", "description": "Item category" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Report tags" },
+        "reward": { "type": "string", "description": "Reward for lost item" },
+        "collectionPoint": { "type": "string", "description": "Collection point for found item" },
+        "contactMethod": { "type": "string", "description": "Preferred contact method" },
+        "phoneNumber": { "type": "string", "description": "Reporter's phone number" }
       },
       "required": ["type", "name", "location", "reporterId", "status"]
-    },
-    "Meetup": {
-      "title": "Meetup",
-      "description": "A scheduled meetup for an item exchange.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "The unique ID of the meetup." },
-        "itemId": { "type": "string", "description": "The ID of the item being exchanged." },
-        "itemName": { "type": "string", "description": "The name of the item being exchanged." },
-        "buyerId": { "type": "string", "description": "The UID of the buyer." },
-        "sellerId": { "type": "string", "description": "The UID of the seller." },
-        "location": { "type": "string", "description": "The campus location for the meetup." },
-        "time": { "type": "string", "format": "date-time", "description": "The scheduled time for the meetup." },
-        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"], "description": "The current status of the meetup." },
-        "createdAt": { "type": "string", "format": "date-time", "description": "When the meetup was scheduled." }
-      },
-      "required": ["itemId", "itemName", "buyerId", "sellerId", "location", "time", "status"]
-    },
-    "Conversation": {
-      "title": "Conversation",
-      "description": "A chat conversation between two users.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "The unique ID of the conversation." },
-        "participants": { "type": "array", "items": { "type": "string" }, "description": "Array of user UIDs in the conversation." },
-        "participantNames": { "type": "object", "description": "Map of UID to display name for quick access." },
-        "lastMessage": { "type": "string", "description": "The content of the last message sent." },
-        "lastMessageTimestamp": { "type": "string", "format": "date-time", "description": "Timestamp of the last message." },
-        "updatedAt": { "type": "string", "format": "date-time", "description": "When the conversation was last updated." },
-        "itemId": { "type": "string", "description": "Optional item ID this chat is about." }
-      },
-      "required": ["participants", "updatedAt"]
-    },
-    "Message": {
-      "title": "Message",
-      "description": "A single message in a conversation.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "The unique ID of the message." },
-        "conversationId": { "type": "string", "description": "The ID of the conversation this message belongs to." },
-        "senderId": { "type": "string", "description": "The UID of the sender." },
-        "text": { "type": "string", "description": "The content of the message." },
-        "timestamp": { "type": "string", "format": "date-time", "description": "When the message was sent." }
-      },
-      "required": ["conversationId", "senderId", "text", "timestamp"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "User",
-      "description": "The collection of user profiles."
+      "description": "User profiles"
     },
     "/marketplace/{itemId}": {
       "schema": "MarketplaceItem",
-      "description": "The collection of marketplace listings."
+      "description": "Marketplace listings"
     },
     "/lostfound/{reportId}": {
-      "schema": "LostFoundItem",
-      "description": "The collection of lost and found reports."
-    },
-    "/meetups/{meetupId}": {
-      "schema": "Meetup",
-      "description": "The collection of scheduled meetups."
-    },
-    "/conversations/{conversationId}": {
-      "schema": "Conversation",
-      "description": "Collection of chat conversations."
-    },
-    "/conversations/{conversationId}/messages/{messageId}": {
-      "schema": "Message",
-      "description": "Sub-collection of messages within a conversation."
+      "schema": "LostFoundReport",
+      "description": "Lost and found reports"
     }
   }
 }

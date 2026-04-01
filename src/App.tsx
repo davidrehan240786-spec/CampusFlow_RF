@@ -20,7 +20,7 @@ import ReportFoundPage from "./components/ReportFoundPage";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useScrollReveal } from "./lib/useScrollReveal";
-import { AuthProvider, useAuth } from "./auth/AuthProvider";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 
 function AppContent() {
   const location = useLocation();

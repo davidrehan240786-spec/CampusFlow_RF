@@ -1,5 +1,8 @@
 {
-  "name": "Remix: CampusFlow - Marketplace & Lost & Found",
+  "name": "Remix: Remix: CampusFlow - Marketplace \u0026 Lost \u0026 Found",
   "description": "A premium campus marketplace and recovery platform for students to buy, sell, and find lost items securely.",
-  "requestFramePermissions": ["camera", "geolocation"]
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
 }

@@ -182,8 +182,7 @@ const EyeBall = ({
 
 
 
-import { signInWithPopup } from "firebase/auth";
-import { googleProvider, auth } from "@/services/firebase/firebase";
+import { signInWithPopup, googleProvider, auth, signInWithEmailAndPassword } from "../../firebase";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -384,32 +383,46 @@ function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
 
-    // Simulate API delay (quick)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Bypass authentication for development convenience
-    console.log("✅ Login successful (Bypassed)!");
-    
-    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
-    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
-    localStorage.setItem("userRole", role);
-    
-    toast({
-      title: "Login Successful",
-      message: `Welcome back to CampusFlow!`,
-      variant: "success",
-    });
-    
-    if (role === "doctor") {
-      navigate("/staff-dashboard");
-    } else {
-      navigate("/dashboard");
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      
+      toast({
+        title: "Login Successful",
+        message: `Welcome back to CampusFlow!`,
+        variant: "success",
+      });
+      
+      // Simple heuristic for demo: if email contains "staff", go to staff dashboard
+      if (email.toLowerCase().includes("staff")) {
+        navigate("/staff-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      console.error("Login Error:", err);
+      let message = "Failed to sign in. Please check your credentials.";
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        message = "Invalid email or password.";
+      } else if (err.code === 'auth/invalid-email') {
+        message = "Invalid email format.";
+      }
+      setError(message);
+      toast({
+        title: "Login Failed",
+        message: message,
+        variant: "error",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

@@ -182,8 +182,7 @@ const EyeBall = ({
 
 
 
-import { signInWithPopup } from "firebase/auth";
-import { googleProvider, auth } from "@/services/firebase/firebase";
+import { signInWithPopup, googleProvider, auth, createUserWithEmailAndPassword } from "../../firebase";
 
 function SignUpPage() {
   const navigate = useNavigate();
@@ -374,32 +373,48 @@ function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password || !name) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
 
-    // Simulate API delay (quick)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Bypass authentication for development convenience
-    console.log("✅ Sign up successful (Bypassed)!");
-    
-    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
-    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
-    localStorage.setItem("userRole", role);
-    
-    toast({
-      title: "Account Created",
-      message: `Welcome to CampusFlow! Your account has been created successfully.`,
-      variant: "success",
-    });
-    
-    if (role === "doctor") {
-      navigate("/staff-dashboard");
-    } else {
-      navigate("/dashboard");
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      
+      toast({
+        title: "Account Created",
+        message: `Welcome to CampusFlow! Your account has been created successfully.`,
+        variant: "success",
+      });
+      
+      // Simple heuristic for demo: if email contains "staff", go to staff dashboard
+      if (email.toLowerCase().includes("staff")) {
+        navigate("/staff-dashboard");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      console.error("Sign Up Error:", err);
+      let message = "Failed to create account. Please try again.";
+      if (err.code === 'auth/email-already-in-use') {
+        message = "This email is already in use.";
+      } else if (err.code === 'auth/weak-password') {
+        message = "Password should be at least 6 characters.";
+      } else if (err.code === 'auth/invalid-email') {
+        message = "Invalid email format.";
+      }
+      setError(message);
+      toast({
+        title: "Sign Up Failed",
+        message: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (

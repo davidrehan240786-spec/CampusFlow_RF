@@ -1,7 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { auth, db } from '@/services/firebase/firebase';
-import { onAuthStateChanged, signOut, type User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { auth, onAuthStateChanged, FirebaseUser, db, doc, getDoc, setDoc, signOut } from '../firebase';
 
 interface AuthContextType {
   user: FirebaseUser | null;
@@ -44,13 +42,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(userDoc.data());
         } else {
           // Create a new profile
+          const isStaff = user.email?.toLowerCase().includes("staff");
           const newProfile = {
             uid: user.uid,
             displayName: user.displayName || 'Anonymous',
             email: user.email || '',
             photoURL: user.photoURL || '',
             trustScore: 98,
-            role: 'user',
+            role: isStaff ? 'staff' : 'user',
             verified: true,
             createdAt: new Date().toISOString(),
           };

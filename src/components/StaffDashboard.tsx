@@ -32,7 +32,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   LineChart, 
   Line, 
@@ -53,7 +53,20 @@ import { SearchBar } from "@/components/ui/search-bar";
 import { useToast } from "@/lib/toast-context";
 
 
+import { db, handleFirestoreError, OperationType } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  orderBy, 
+  limit,
+  where,
+  getDocs,
+  doc,
+  updateDoc,
+  serverTimestamp
+} from "firebase/firestore";
 
 // --- Types ---
 
@@ -307,7 +320,7 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
   );
 };
 
-const StudentsView = () => {
+const StudentsView = ({ students }: { students: any[] }) => {
   const [searchQuery, setSearchQuery] = useState("");
   
   return (
@@ -332,28 +345,32 @@ const StudentsView = () => {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {STUDENTS.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
+        {students.filter(p => (p.displayName || p.name || "").toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
           <Card key={student.id} className="group hover:border-white/20">
             <div className="flex items-center gap-4 mb-6">
-              <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 group-hover:bg-white/10 transition-colors">
-                <User className="size-8" />
+              <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 group-hover:bg-white/10 transition-colors overflow-hidden">
+                {student.photoURL ? (
+                  <img src={student.photoURL} alt={student.displayName} className="size-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <User className="size-8" />
+                )}
               </div>
               <div>
-                <h4 className="text-xl font-bold text-white tracking-tight">{student.name}</h4>
-                <p className="text-sm text-secondary">ID: {student.id} • {student.major}</p>
+                <h4 className="text-xl font-bold text-white tracking-tight">{student.displayName || student.name || "Unknown User"}</h4>
+                <p className="text-sm text-secondary">ID: {student.id.substring(0, 8)}... • {student.major || "Student"}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Last Active</p>
-                <p className="text-sm text-white/80 font-medium">{student.lastActive}</p>
+                <p className="text-sm text-white/80 font-medium">{student.lastActive || "Recently"}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Status</p>
                 <p className={cn(
                   "text-sm font-bold",
                   student.status === "Flagged" ? "text-red-400" : "text-emerald-400"
-                )}>{student.status}</p>
+                )}>{student.status || "Active"}</p>
               </div>
             </div>
             <Button className="w-full rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 text-white font-bold">
@@ -366,7 +383,16 @@ const StudentsView = () => {
   );
 };
 
-const ListingsView = () => {
+const ListingsView = ({ marketplaceItems, lostFoundItems }: { marketplaceItems: any[], lostFoundItems: any[] }) => {
+  const allListings = [
+    ...marketplaceItems.map(i => ({ ...i, type: 'Sale' })),
+    ...lostFoundItems.map(i => ({ ...i, type: i.type === 'lost' ? 'Lost' : 'Found' }))
+  ].sort((a, b) => {
+    const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0);
+    const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0);
+    return dateB.getTime() - dateA.getTime();
+  });
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <SectionHeader title="Marketplace Listings" subtitle="Review and moderate campus marketplace items." />
@@ -379,19 +405,19 @@ const ListingsView = () => {
               <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white">View All</Button>
             </div>
             <div className="space-y-4">
-              {[
-                { name: "Calculus Textbook", student: "Sarah Johnson", date: "2 hours ago", type: "Sale" },
-                { name: "Lost Keys - Library", student: "Michael Chen", date: "5 hours ago", type: "Lost" },
-                { name: "Dorm Mini Fridge", student: "Emma Wilson", date: "1 day ago", type: "Sale" },
-              ].map((listing, i) => (
-                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all cursor-pointer">
+              {allListings.slice(0, 10).map((listing, i) => (
+                <div key={listing.id || i} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all cursor-pointer">
                   <div className="flex items-center gap-4">
-                    <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
-                      <FileText className="size-5" />
+                    <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40 overflow-hidden">
+                      {listing.image ? (
+                        <img src={listing.image} alt={listing.name} className="size-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <FileText className="size-5" />
+                      )}
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-white">{listing.name}</h4>
-                      <p className="text-xs text-secondary">{listing.student} • {listing.date}</p>
+                      <p className="text-xs text-secondary">{listing.sellerName || listing.reporterName || "User"} • {listing.createdAt?.toDate ? listing.createdAt.toDate().toLocaleDateString() : "Recently"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -402,6 +428,9 @@ const ListingsView = () => {
                   </div>
                 </div>
               ))}
+              {allListings.length === 0 && (
+                <p className="text-center text-secondary py-10">No listings found.</p>
+              )}
             </div>
           </Card>
         </div>
@@ -669,10 +698,10 @@ const ChatView = () => {
   );
 };
 
-const SettingsView = () => {
+const SettingsView = ({ profile }: { profile: any }) => {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <SectionHeader title="Settings" subtitle="Manage your account and platform preferences." />
+      <SectionHeader title="Settings" subtitle="View your account and platform details." />
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
@@ -681,58 +710,20 @@ const SettingsView = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Full Name</Label>
-                <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="Staff Member" />
+                <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.displayName || "N/A"} readOnly />
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Role</Label>
-                <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="Campus Administrator" />
+                <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60 capitalize" value={profile?.role || "staff"} readOnly />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Staff ID</Label>
-                <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="STF-99283-X" />
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Email</Label>
+                <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.email || "N/A"} readOnly />
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Department</Label>
-                <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="Student Affairs" />
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">User ID</Label>
+                <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.uid || "N/A"} readOnly />
               </div>
-            </div>
-            <Button className="mt-8 bg-white text-black hover:bg-white/90 rounded-xl px-8 font-bold">Save Changes</Button>
-          </Card>
-
-          <Card>
-            <h3 className="text-lg font-bold text-white mb-6">Security</h3>
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Two-Factor Authentication</p>
-                  <p className="text-sm text-secondary">Add an extra layer of security to your account.</p>
-                </div>
-                <Checkbox className="size-6 rounded-lg border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black" defaultChecked disabled />
-              </div>
-              <div className="pt-4">
-                <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 rounded-xl">Change Password</Button>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
-          <Card>
-            <h3 className="text-lg font-bold text-white mb-6">Clinical Alerts</h3>
-            <div className="space-y-4">
-              {[
-                { label: "Critical Vitals", desc: "Immediate notification for patient SOS" },
-                { label: "New Reports", desc: "When a patient uploads a new document" },
-                { label: "Consultation Requests", desc: "New message from patients" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center justify-between py-2">
-                  <div>
-                    <p className="text-sm font-bold text-white">{item.label}</p>
-                    <p className="text-[10px] text-white/40">{item.desc}</p>
-                  </div>
-                  <Checkbox defaultChecked className="size-5 rounded-md border-white/10 data-[state=checked]:bg-white data-[state=checked]:text-black" />
-                </div>
-              ))}
             </div>
           </Card>
         </div>
@@ -744,11 +735,54 @@ const SettingsView = () => {
 // --- Main Dashboard Component ---
 
 export default function StaffDashboard() {
-  const { logout } = useAuth();
+  const { logout, user, profile } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<Section>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  
+  const [students, setStudents] = useState<any[]>([]);
+  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+  const [lostFoundItems, setLostFoundItems] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", handleScroll);
+    
+    // Real-time listeners for Staff
+    const studentsQuery = query(collection(db, "users"), limit(50));
+    const marketplaceQuery = query(collection(db, "marketplace"), orderBy("createdAt", "desc"), limit(50));
+    const lostFoundQuery = query(collection(db, "lostfound"), orderBy("createdAt", "desc"), limit(50));
+
+    const unsubscribeStudents = onSnapshot(studentsQuery, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setStudents(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "users");
+    });
+
+    const unsubscribeMarketplace = onSnapshot(marketplaceQuery, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setMarketplaceItems(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "marketplace");
+    });
+
+    const unsubscribeLostFound = onSnapshot(lostFoundQuery, (snapshot) => {
+      const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setLostFoundItems(items);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, "lostfound");
+    });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      unsubscribeStudents();
+      unsubscribeMarketplace();
+      unsubscribeLostFound();
+    };
+  }, []);
 
   const getNavLabel = (label: Section) => {
     return label;
@@ -770,14 +804,18 @@ export default function StaffDashboard() {
   };
 
   const renderContent = () => {
+    const studentsToUse = students;
+    const marketplaceToUse = marketplaceItems;
+    const lostFoundToUse = lostFoundItems;
+
     switch (activeSection) {
       case "Dashboard": return <DashboardView setActiveSection={setActiveSection} />;
-      case "Students": return <StudentsView />;
-      case "Listings": return <ListingsView />;
+      case "Students": return <StudentsView students={studentsToUse} />;
+      case "Listings": return <ListingsView marketplaceItems={marketplaceToUse} lostFoundItems={lostFoundToUse} />;
       case "Activity": return <ActivityView />;
       case "Meetups": return <div className="p-12 text-center text-secondary">Meetups Management Coming Soon</div>;
       case "Chat": return <ChatView />;
-      case "Settings": return <SettingsView />;
+      case "Settings": return <SettingsView profile={profile} />;
       default: return <DashboardView setActiveSection={setActiveSection} />;
     }
   };

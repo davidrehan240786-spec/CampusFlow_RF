@@ -46,7 +46,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   XAxis, 
   YAxis, 
@@ -68,7 +68,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { TextRoll } from "@/components/ui/animated-menu";
 import { useAuth } from "../context/AuthContext";
-import { db, handleFirestoreError, OperationType } from "@/services/firebase/firebase";
+import { db, handleFirestoreError, OperationType } from "../firebase";
 import { 
   collection, 
   onSnapshot, 
@@ -1942,7 +1942,6 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
   const [conversations, setConversations] = useState<any[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<any>(null);
   const [messages, setMessages] = useState<any[]>([]);
-  const [dummyMessages, setDummyMessages] = useState<Record<string, any[]>>(DUMMY_MESSAGES_MAP);
   const [newMessage, setNewMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const scrollRef = React.useRef<HTMLDivElement>(null);
@@ -1958,26 +1957,18 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
 
     const unsubscribe = onSnapshot(conversationsQuery, (snapshot) => {
       const realConvs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
-      // Merge real conversations with dummy ones for demo
-      const allConvs = [...realConvs, ...DUMMY_CONVERSATIONS];
-      setConversations(allConvs);
+      setConversations(realConvs);
       
       // Select the initial chat if provided, or the first one if none is selected
       if (initialChatId) {
-        const initialConv = allConvs.find(c => c.id === initialChatId);
+        const initialConv = realConvs.find(c => c.id === initialChatId);
         if (initialConv) {
           setSelectedConversation(initialConv);
         }
-      } else if (allConvs.length > 0 && !selectedConversation) {
-        setSelectedConversation(allConvs[0]);
+      } else if (realConvs.length > 0 && !selectedConversation) {
+        setSelectedConversation(realConvs[0]);
       }
     }, (error) => {
-      // If there's an error (e.g. no real convs yet), still show dummy ones
-      setConversations(DUMMY_CONVERSATIONS);
-      if (!selectedConversation && DUMMY_CONVERSATIONS.length > 0) {
-        setSelectedConversation(DUMMY_CONVERSATIONS[0]);
-      }
       handleFirestoreError(error, OperationType.LIST, "conversations");
     });
 
@@ -1986,11 +1977,6 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
 
   useEffect(() => {
     if (!selectedConversation) return;
-
-    if (selectedConversation.isDummy) {
-      setMessages(dummyMessages[selectedConversation.id] || []);
-      return;
-    }
 
     const messagesQuery = query(
       collection(db, `conversations/${selectedConversation.id}/messages`),
@@ -2012,7 +1998,7 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
     });
 
     return () => unsubscribe();
-  }, [selectedConversation, dummyMessages]);
+  }, [selectedConversation]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2020,29 +2006,6 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
 
     const messageText = newMessage.trim();
     setNewMessage("");
-
-    if (selectedConversation.isDummy) {
-      const newMsg = {
-        id: `dummy_msg_${Date.now()}`,
-        senderId: 'me',
-        text: messageText,
-        timestamp: { toDate: () => new Date() }
-      };
-      
-      setDummyMessages(prev => ({
-        ...prev,
-        [selectedConversation.id]: [...(prev[selectedConversation.id] || []), newMsg]
-      }));
-
-      // Update last message in conversation list locally
-      setConversations(prev => prev.map(c => 
-        c.id === selectedConversation.id 
-          ? { ...c, lastMessage: messageText, lastMessageTimestamp: { toDate: () => new Date() } }
-          : c
-      ));
-
-      return;
-    }
 
     try {
       const messageData = {
@@ -2066,10 +2029,6 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
   };
 
   const getOtherParticipantName = (conv: any) => {
-    if (conv.isDummy) {
-      const otherId = conv.participants.find((id: string) => id !== 'me');
-      return conv.participantNames[otherId];
-    }
     if (!conv.participantNames) return "Unknown User";
     const otherId = conv.participants.find((id: string) => id !== user.uid);
     return conv.participantNames[otherId] || "Unknown User";
@@ -2217,9 +2176,9 @@ const ChatView = ({ user, initialChatId }: { user: any, initialChatId?: string |
   );
 };
 
-const SettingsView = () => (
+const SettingsView = ({ profile }: { profile: any }) => (
   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <SectionHeader title="Settings" subtitle="Manage your account preferences and security" />
+    <SectionHeader title="Settings" subtitle="View your account details and security" />
     
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div className="lg:col-span-2 space-y-6">
@@ -2228,66 +2187,21 @@ const SettingsView = () => (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Full Name</Label>
-              <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="Sarah Johnson" />
+              <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.displayName || "N/A"} readOnly />
             </div>
             <div className="space-y-2">
               <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Email Address</Label>
-              <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="sarah.j@example.com" />
+              <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.email || "N/A"} readOnly />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Phone Number</Label>
-              <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="+1 (555) 123-4567" />
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Role</Label>
+              <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60 capitalize" value={profile?.role || "user"} readOnly />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Location</Label>
-              <Input className="bg-white/5 border-white/5 rounded-xl h-12" defaultValue="San Francisco, CA" />
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">User ID</Label>
+              <Input className="bg-white/5 border-white/5 rounded-xl h-12 text-white/60" value={profile?.uid || "N/A"} readOnly />
             </div>
           </div>
-          <Button className="mt-8 bg-white text-black hover:bg-white/90 rounded-xl px-8 font-bold">Save Changes</Button>
-        </Card>
-
-        <Card>
-          <h3 className="text-lg font-bold text-white mb-6">Security</h3>
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-white">Two-Factor Authentication</p>
-                <p className="text-sm text-secondary">Add an extra layer of security to your account</p>
-              </div>
-              <Checkbox className="size-6 rounded-lg border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black" />
-            </div>
-            <div className="pt-4">
-              <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 rounded-xl">Change Password</Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      <div className="space-y-6">
-        <Card>
-          <h3 className="text-lg font-bold text-white mb-6">Notifications</h3>
-          <div className="space-y-4">
-            {[
-              { label: "Marketplace Alerts", desc: "New matches for your lost items" },
-              { label: "Chat Messages", desc: "Direct messages from buyers and sellers" },
-              { label: "Trust Updates", desc: "When your trust score changes" },
-              { label: "Campus Insights", desc: "Weekly marketplace trend reports" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-white">{item.label}</p>
-                  <p className="text-[10px] text-white/40">{item.desc}</p>
-                </div>
-                <Checkbox defaultChecked className="size-5 rounded-md border-white/10 data-[state=checked]:bg-white data-[state=checked]:text-black" />
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="bg-red-500/5 border-red-500/20">
-          <h3 className="text-lg font-bold text-red-400 mb-2">Danger Zone</h3>
-          <p className="text-sm text-white/40 mb-6">Irreversibly delete your account and all campus data.</p>
-          <Button variant="outline" className="w-full border-red-500/20 hover:bg-red-500/10 text-red-400 font-bold rounded-xl">Delete Account</Button>
         </Card>
       </div>
     </div>
@@ -2300,9 +2214,9 @@ export default function Dashboard() {
   const { user, profile, logout } = useAuth();
   const [activeSection, setActiveSection] = useState<Section>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [marketplaceItems, setMarketplaceItems] = useState<any[]>(DUMMY_MARKETPLACE);
-  const [lostFoundItems, setLostFoundItems] = useState<any[]>(DUMMY_LOSTFOUND);
-  const [meetups, setMeetups] = useState<any[]>(DUMMY_MEETUPS);
+  const [marketplaceItems, setMarketplaceItems] = useState<any[]>([]);
+  const [lostFoundItems, setLostFoundItems] = useState<any[]>([]);
+  const [meetups, setMeetups] = useState<any[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -2313,7 +2227,7 @@ export default function Dashboard() {
     const marketplaceQuery = query(collection(db, "marketplace"), orderBy("createdAt", "desc"));
     const unsubscribeMarketplace = onSnapshot(marketplaceQuery, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMarketplaceItems(items.length > 0 ? items : DUMMY_MARKETPLACE);
+      setMarketplaceItems(items);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "marketplace");
     });
@@ -2322,7 +2236,7 @@ export default function Dashboard() {
     const lostFoundQuery = query(collection(db, "lostfound"), orderBy("createdAt", "desc"));
     const unsubscribeLostFound = onSnapshot(lostFoundQuery, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setLostFoundItems(items.length > 0 ? items : DUMMY_LOSTFOUND);
+      setLostFoundItems(items);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "lostfound");
     });
@@ -2333,7 +2247,7 @@ export default function Dashboard() {
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       // Filter meetups where user is either buyer or seller
       const userMeetups = items.filter((m: any) => m.buyerId === user.uid || m.sellerId === user.uid);
-      setMeetups(userMeetups.length > 0 ? userMeetups : DUMMY_MEETUPS);
+      setMeetups(userMeetups);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, "meetups");
     });
