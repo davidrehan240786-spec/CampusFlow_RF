@@ -15,13 +15,16 @@ import Dashboard from "./components/Dashboard";
 import StaffDashboard from "./components/StaffDashboard";
 import ContactPage from "./components/ContactPage";
 import AddItemPage from "./components/AddItemPage";
-import ChatPage from "./components/ChatPage";
-import { Routes, Route, useLocation } from "react-router-dom";
+import ReportLostPage from "./components/ReportLostPage";
+import ReportFoundPage from "./components/ReportFoundPage";
+import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import { useScrollReveal } from "./lib/useScrollReveal";
+import { AuthProvider, useAuth } from "./auth/AuthProvider";
 
-export default function App() {
+function AppContent() {
   const location = useLocation();
+  const { user } = useAuth();
   useScrollReveal([location.pathname]);
 
   // Scroll to top or hash on route change
@@ -40,13 +43,14 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-brand-bg-top overflow-x-hidden selection:bg-white selection:text-black">
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" /> : <SignUp />} />
         <Route path="/toast-demo" element={<ToasterDemo />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/staff-dashboard" element={<StaffDashboard />} />
-        <Route path="/add-item" element={<AddItemPage />} />
-        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
+        <Route path="/staff-dashboard" element={user ? <StaffDashboard /> : <Navigate to="/login" />} />
+        <Route path="/add-item" element={user ? <AddItemPage /> : <Navigate to="/login" />} />
+        <Route path="/report-lost" element={user ? <ReportLostPage /> : <Navigate to="/login" />} />
+        <Route path="/report-found" element={user ? <ReportFoundPage /> : <Navigate to="/login" />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/" element={
           <>
@@ -68,5 +72,13 @@ export default function App() {
         } />
       </Routes>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }

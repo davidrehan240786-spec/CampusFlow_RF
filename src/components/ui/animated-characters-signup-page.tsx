@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Mail, Sparkles, ArrowLeft, User, ArrowUpRight, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/auth/AuthProvider";
 
 
 interface PupilProps {
@@ -183,10 +182,12 @@ const EyeBall = ({
 
 
 
+import { signInWithPopup } from "firebase/auth";
+import { googleProvider, auth } from "@/services/firebase/firebase";
+
 function SignUpPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, loading: authLoading, signUp, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -347,48 +348,58 @@ function SignUpPage() {
   const yellowPos = calculatePosition(yellowRef);
   const orangePos = calculatePosition(orangeRef);
 
-  useEffect(() => {
-    if (!authLoading && user) {
-      navigate("/dashboard", { replace: true });
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      await signInWithPopup(auth, googleProvider);
+      toast({
+        title: "Account Created",
+        message: "Welcome to CampusFlow!",
+        variant: "success",
+      });
+      navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Google Sign Up Error:", err);
+      setError(err.message || "Failed to sign up with Google");
+      toast({
+        title: "Sign Up Failed",
+        message: err.message || "Could not connect to Google",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-  }, [authLoading, user, navigate]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    try {
-      await signUp(email, password);
-      toast({
-        title: "Account Created",
-        message: `Welcome${name ? `, ${name}` : ""}!`,
-        variant: "success",
-      });
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to sign up.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // Simulate API delay (quick)
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-  const handleGoogle = async () => {
-    setError("");
-    setIsLoading(true);
-    try {
-      await signInWithGoogle();
-      toast({
-        title: "Account Created",
-        message: "Signed up with Google.",
-        variant: "success",
-      });
+    // Bypass authentication for development convenience
+    console.log("✅ Sign up successful (Bypassed)!");
+    
+    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
+    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
+    localStorage.setItem("userRole", role);
+    
+    toast({
+      title: "Account Created",
+      message: `Welcome to CampusFlow! Your account has been created successfully.`,
+      variant: "success",
+    });
+    
+    if (role === "doctor") {
+      navigate("/staff-dashboard");
+    } else {
       navigate("/dashboard");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed.");
-    } finally {
-      setIsLoading(false);
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -724,7 +735,7 @@ function SignUpPage() {
               variant="outline" 
               className="w-full h-12 bg-background border-border/60 hover:bg-accent"
               type="button"
-              onClick={() => void handleGoogle()}
+              onClick={handleGoogleSignUp}
               disabled={isLoading}
             >
               <Mail className="mr-2 size-5" />

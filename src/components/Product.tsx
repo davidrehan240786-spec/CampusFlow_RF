@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { MessageSquare, Shield, Zap, ShoppingBag, Send, Search, Heart, MapPin, Package, RefreshCcw, CheckCircle, UserCheck } from "lucide-react";
+import { MessageSquare, Shield, Zap, ShoppingBag, Send, Search, Heart, MapPin, Package, RefreshCcw, CheckCircle, UserCheck, ChevronRight } from "lucide-react";
 import { Line, LineChart, ResponsiveContainer } from "recharts";
+import { cn } from "@/lib/utils";
 
 export default function Product() {
   const marketplaceCategories = [
@@ -110,6 +111,48 @@ export default function Product() {
         </div>
       </div>
 
+      {/* Live Campus Marketplace Preview */}
+      <div className="max-w-[1200px] mx-auto animate-on-scroll">
+        <div className="inline-block px-4 py-1.5 rounded-full glass border-white/10 text-[12px] font-medium text-white/50 mb-6 uppercase tracking-wider">
+          ● Live Marketplace
+        </div>
+        <h3 className="text-4xl font-bold mb-12">Featured Campus Listings</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            { name: "Calculus Textbook", price: "$45", category: "Books", image: "https://picsum.photos/seed/book/400/400", tag: "Urgent" },
+            { name: "Sony Headphones", price: "$180", category: "Electronics", image: "https://picsum.photos/seed/sony/400/400", tag: "Verified" },
+            { name: "Dorm Desk Lamp", price: "$15", category: "Dorm", image: "https://picsum.photos/seed/lamp/400/400", tag: "New" },
+            { name: "Electric Scooter", price: "$250", category: "Electronics", image: "https://picsum.photos/seed/scooter/400/400", tag: "Trending" },
+          ].map((item, i) => (
+            <div key={i} className="glass rounded-[2.5rem] overflow-hidden group hover:border-white/20 transition-all">
+              <div className="aspect-square overflow-hidden relative">
+                <img 
+                  src={item.image} 
+                  alt={item.name} 
+                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="absolute top-4 left-4">
+                  <span className="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-[10px] font-bold uppercase tracking-widest text-white/80 border border-white/10">
+                    {item.tag}
+                  </span>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{item.category}</span>
+                  <span className="text-lg font-bold text-white">{item.price}</span>
+                </div>
+                <h4 className="text-lg font-bold text-white mb-4 line-clamp-1">{item.name}</h4>
+                <Link to="/dashboard" className="w-full py-3 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center text-[12px] font-bold uppercase tracking-widest text-white/60 hover:bg-white hover:text-black transition-all">
+                  View Details
+                </Link>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Smart Matching */}
       <div className="max-w-[1200px] mx-auto animate-on-scroll">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
@@ -153,6 +196,49 @@ export default function Product() {
               Our system analyzes descriptions, photos, and locations to find matches for your lost items. Get notified the moment a match is found.
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Recent Lost & Found Preview */}
+      <div className="max-w-[1200px] mx-auto animate-on-scroll">
+        <div className="inline-block px-4 py-1.5 rounded-full glass border-white/10 text-[12px] font-medium text-white/50 mb-6 uppercase tracking-wider">
+          ● Recent Reports
+        </div>
+        <h3 className="text-4xl font-bold mb-12">Lost & Found Activity</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[
+            { name: "Blue Hydroflask", location: "Library", status: "Match Found", time: "2h ago", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
+            { name: "Keys with Red Keychain", location: "Gym", status: "Reported Lost", time: "5h ago", icon: <Search className="w-5 h-5 text-blue-400" /> },
+            { name: "MacBook Pro Charger", location: "Cafeteria", status: "Match Found", time: "Yesterday", icon: <CheckCircle className="w-5 h-5 text-emerald-400" /> },
+          ].map((item, i) => (
+            <div key={i} className="glass p-8 rounded-[3rem] group hover:border-white/20 transition-all">
+              <div className="flex items-start justify-between mb-8">
+                <div className="w-14 h-14 rounded-2xl glass flex items-center justify-center group-hover:scale-110 transition-transform">
+                  {item.icon}
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">{item.time}</span>
+              </div>
+              <h4 className="text-xl font-bold text-white mb-4">{item.name}</h4>
+              <div className="space-y-3 mb-8">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/40">Location</span>
+                  <span className="text-sm font-medium text-white/80">{item.location}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-white/40">Status</span>
+                  <span className={cn(
+                    "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
+                    item.status === "Match Found" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                  )}>
+                    {item.status}
+                  </span>
+                </div>
+              </div>
+              <Link to="/dashboard" className="flex items-center justify-center gap-2 text-[12px] font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
+                View Details <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+          ))}
         </div>
       </div>
 

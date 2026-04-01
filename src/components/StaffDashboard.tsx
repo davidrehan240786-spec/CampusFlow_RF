@@ -32,7 +32,7 @@ import {
   Zap
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   LineChart, 
   Line, 
@@ -52,6 +52,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/ui/search-bar";
 import { useToast } from "@/lib/toast-context";
 
+
+import { useAuth } from "../context/AuthContext";
 
 // --- Types ---
 
@@ -742,6 +744,7 @@ const SettingsView = () => {
 // --- Main Dashboard Component ---
 
 export default function StaffDashboard() {
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<Section>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -756,6 +759,15 @@ export default function StaffDashboard() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
 
   const renderContent = () => {
     switch (activeSection) {
@@ -818,7 +830,7 @@ export default function StaffDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start gap-3 p-0 h-auto text-red-400/60 hover:text-red-400 hover:bg-transparent font-bold text-xs uppercase tracking-widest"
-              onClick={() => navigate("/login")}
+              onClick={handleLogout}
             >
               <LogOut className="size-4" /> Logout
             </Button>

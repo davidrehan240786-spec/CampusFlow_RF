@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Search, CircleDot } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 
 const SUGGESTIONS = [

@@ -1,0 +1,243 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: /users/{userId}
+    // Document ID: userId (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required) - The unique ID of the user.
+    //   - displayName: string (required) - The user's full name.
+    //   - email: string (required, email format) - The user's campus email.
+    //   - photoURL: string (optional, uri format) - The user's profile picture URL.
+    //   - trustScore: number (optional) - The user's trust score (0-100).
+    //   - role: string (required, enum: ["user", "admin"]) - The user's role.
+    //   - verified: boolean (optional) - Whether the user is a verified student.
+    //   - createdAt: timestamp (optional) - When the user account was created.
+    //
+    // Collection: /marketplace/{itemId}
+    // Document ID: itemId (Unique ID)
+    // Fields:
+    //   - id: string (optional) - The unique ID of the item.
+    //   - name: string (required) - The name of the item.
+    //   - description: string (optional) - A detailed description of the item.
+    //   - price: number (required) - The price of the item.
+    //   - category: string (required) - The category of the item.
+    //   - location: string (optional) - The campus location.
+    //   - image: string (optional, uri format) - The URL of the item's image.
+    //   - sellerId: string (required) - The UID of the seller.
+    //   - sellerName: string (optional) - The name of the seller.
+    //   - status: string (required, enum: ["available", "sold", "pending"]) - The current status.
+    //   - trending: boolean (optional) - Whether the item is currently trending.
+    //   - views: number (optional) - The number of views.
+    //   - interest: number (optional) - The number of users who have expressed interest.
+    //   - createdAt: timestamp (optional) - When the item was listed.
+    //
+    // Collection: /lostfound/{reportId}
+    // Document ID: reportId (Unique ID)
+    // Fields:
+    //   - id: string (optional) - The unique ID of the report.
+    //   - type: string (required, enum: ["lost", "found"]) - Whether the item is lost or found.
+    //   - name: string (required) - The name of the item.
+    //   - description: string (optional) - A description of the item.
+    //   - location: string (required) - The campus location.
+    //   - image: string (optional, uri format) - An optional image.
+    //   - reporterId: string (required) - The UID of the reporter.
+    //   - status: string (required, enum: ["active", "resolved"]) - The current status.
+    //   - createdAt: timestamp (optional) - When the report was created.
+    //
+    // Collection: /meetups/{meetupId}
+    // Document ID: meetupId (Unique ID)
+    // Fields:
+    //   - id: string (optional) - The unique ID of the meetup.
+    //   - itemId: string (required) - The ID of the item.
+    //   - itemName: string (required) - The name of the item.
+    //   - buyerId: string (required) - The UID of the buyer.
+    //   - sellerId: string (required) - The UID of the seller.
+    //   - location: string (required) - The campus location.
+    //   - time: timestamp (required) - The scheduled time.
+    //   - status: string (required, enum: ["pending", "confirmed", "completed", "cancelled"]) - The current status.
+    //   - createdAt: timestamp (optional) - When the meetup was scheduled.
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+
+    function isOwner(userId) {
+       return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "rehanansari240786@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+       return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+       return email is string &&
+         email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+       return url is string &&
+         (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'displayName', 'email', 'role']) &&
+             data.uid is string && data.uid.size() > 0 &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             isValidEmail(data.email) &&
+             data.role in ['user', 'admin'] &&
+             (!('photoURL' in data) || isValidUrl(data.photoURL)) &&
+             (!('trustScore' in data) || (data.trustScore is number && data.trustScore >= 0 && data.trustScore <= 100)) &&
+             (!('verified' in data) || data.verified is bool);
+    }
+
+    function isValidMarketplaceItem(data) {
+      return hasRequiredFields(['name', 'price', 'category', 'sellerId', 'status']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.price is number && data.price >= 0 &&
+             data.category is string &&
+             data.sellerId is string &&
+             data.status in ['available', 'sold', 'pending'] &&
+             (!('image' in data) || isValidUrl(data.image)) &&
+             (!('views' in data) || data.views is number) &&
+             (!('interest' in data) || data.interest is number);
+    }
+
+    function isValidLostFoundItem(data) {
+      return hasRequiredFields(['type', 'name', 'location', 'reporterId', 'status']) &&
+             data.type in ['lost', 'found'] &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.location is string &&
+             data.reporterId is string &&
+             data.status in ['active', 'resolved'] &&
+             (!('image' in data) || isValidUrl(data.image));
+    }
+
+    function isValidMeetup(data) {
+      return hasRequiredFields(['itemId', 'itemName', 'buyerId', 'sellerId', 'location', 'time', 'status']) &&
+             data.itemId is string &&
+             data.itemName is string &&
+             data.buyerId is string &&
+             data.sellerId is string &&
+             data.location is string &&
+             data.time is timestamp &&
+             data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+    }
+
+    function isValidConversation(data) {
+      return hasRequiredFields(['participants', 'updatedAt']) &&
+             data.participants is list && data.participants.size() >= 2 &&
+             data.updatedAt is timestamp &&
+             (!('participantNames' in data) || data.participantNames is map);
+    }
+
+    function isValidMessage(data) {
+      return hasRequiredFields(['conversationId', 'senderId', 'text', 'timestamp']) &&
+             data.conversationId is string &&
+             data.senderId is string &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.timestamp is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      // Users can read their own profile. Admins can read all profiles.
+      // Public profiles (name, photo) are allowed for authenticated users.
+      allow read: if isAuthenticated();
+      
+      // Users can create their own profile. Admins can create any profile.
+      // Users cannot set their own role to 'admin' unless they are already an admin.
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) && (request.resource.data.role == 'user' || isAdmin()) || isAdmin());
+      
+      // Users can update their own profile. Admins can update any profile.
+      // Users cannot change their role.
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (isOwner(userId) && (request.resource.data.role == resource.data.role || isAdmin()) || isAdmin());
+      
+      allow delete: if isAdmin();
+    }
+
+    match /marketplace/{itemId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && isValidMarketplaceItem(request.resource.data) && 
+                    (request.resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && isValidMarketplaceItem(request.resource.data) && 
+                    (resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      allow delete: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    match /lostfound/{reportId} {
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && isValidLostFoundItem(request.resource.data) && 
+                    (request.resource.data.reporterId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && isValidLostFoundItem(request.resource.data) && 
+                    (resource.data.reporterId == request.auth.uid || isAdmin());
+      
+      allow delete: if isAuthenticated() && (resource.data.reporterId == request.auth.uid || isAdmin());
+    }
+
+    match /meetups/{meetupId} {
+      // Only the buyer, seller, or admin can read/write meetups.
+      allow read: if isAuthenticated() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      allow create: if isAuthenticated() && isValidMeetup(request.resource.data) && 
+                    (request.resource.data.buyerId == request.auth.uid || request.resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      allow update: if isAuthenticated() && isValidMeetup(request.resource.data) && 
+                    (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      allow delete: if isAuthenticated() && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && isValidConversation(request.resource.data) && request.auth.uid in request.resource.data.participants;
+      allow update: if isAuthenticated() && isValidConversation(request.resource.data) && request.auth.uid in resource.data.participants;
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+        allow create: if isAuthenticated() && isValidMessage(request.resource.data) && 
+                      request.auth.uid == request.resource.data.senderId &&
+                      request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participants;
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

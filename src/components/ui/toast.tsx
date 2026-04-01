@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import {
   Toaster as SonnerToaster,
   toast as sonnerToast,
