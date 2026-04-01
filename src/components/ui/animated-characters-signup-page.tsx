@@ -189,7 +189,6 @@ function SignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"patient" | "doctor">("patient");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mouseX, setMouseX] = useState<number>(0);
@@ -356,10 +355,14 @@ function SignUpPage() {
 
     // Bypass authentication for development convenience
     console.log("✅ Sign up successful (Bypassed)!");
+    
+    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
+    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
     localStorage.setItem("userRole", role);
+    
     toast({
       title: "Account Created",
-      message: `Welcome to CampusFlow! Your ${role === 'patient' ? 'Student' : 'Staff'} account has been created successfully.`,
+      message: `Welcome to CampusFlow! Your account has been created successfully.`,
       variant: "success",
     });
     
@@ -605,38 +608,6 @@ function SignUpPage() {
 
           {/* Sign Up Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">I am a</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  onClick={() => setRole("patient")}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all",
-                    role === "patient" 
-                      ? "border-primary bg-primary/5 text-primary" 
-                      : "border-border/60 bg-background text-muted-foreground hover:border-primary/40"
-                  )}
-                >
-                  <User className="size-6 mb-2" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Student</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setRole("doctor")}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all",
-                    role === "doctor" 
-                      ? "border-primary bg-primary/5 text-primary" 
-                      : "border-border/60 bg-background text-muted-foreground hover:border-primary/40"
-                  )}
-                >
-                  <Activity className="size-6 mb-2" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Staff</span>
-                </button>
-              </div>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
               <div className="relative">

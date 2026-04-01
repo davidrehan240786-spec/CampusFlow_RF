@@ -14,7 +14,7 @@ import ToasterDemo from "./components/ui/toast-demo";
 import Dashboard from "./components/Dashboard";
 import StaffDashboard from "./components/StaffDashboard";
 import ContactPage from "./components/ContactPage";
-import RoleSelection from "./components/RoleSelection";
+import AddItemPage from "./components/AddItemPage";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useScrollReveal } from "./lib/useScrollReveal";
@@ -41,10 +41,10 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/role-selection" element={<RoleSelection />} />
         <Route path="/toast-demo" element={<ToasterDemo />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/staff-dashboard" element={<StaffDashboard />} />
+        <Route path="/add-item" element={<AddItemPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/" element={
           <>

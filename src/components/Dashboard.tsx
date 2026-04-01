@@ -24,9 +24,16 @@ import {
   ArrowLeft,
   ShoppingBag,
   CheckCircle,
-  MapPin
+  MapPin,
+  Filter,
+  ArrowUpDown,
+  Flame,
+  Tag,
+  PlusCircle,
+  TrendingUp,
+  Star
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   XAxis, 
@@ -106,8 +113,8 @@ const Card = ({ children, className, glow = false, ...props }: { children: React
   </div>
 );
 
-const SectionHeader = ({ title, subtitle, action }: { title: string, subtitle?: string, action?: React.ReactNode }) => (
-  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+const SectionHeader = ({ title, subtitle, action, className }: { title: string, subtitle?: string, action?: React.ReactNode, className?: string }) => (
+  <div className={cn("flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8", className)}>
     <div>
       <h2 className="text-3xl font-bold tracking-tight text-white leading-tight">{title}</h2>
       {subtitle && <p className="text-secondary mt-1">{subtitle}</p>}
@@ -248,192 +255,829 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
 };
 
 const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Section) => void }) => {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All Items");
-  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [sortBy, setSortBy] = useState("Recently Added");
+  const [priceRange, setPriceRange] = useState(100);
+  const [activeLocation, setActiveLocation] = useState("All");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [isFilterVisible, setIsFilterVisible] = useState(false);
 
-  const handleFilesSelected = (files: File[]) => {
-    const newFiles = files.map((file) => ({
-      id: Math.random().toString(36).substring(7),
-      file,
-      progress: 0,
-      status: "uploading" as const,
-    }));
-
-    setUploadingFiles((prev) => [...prev, ...newFiles]);
-
-    // Simulate upload for each file
-    newFiles.forEach((fileObj) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.random() * 30;
-        if (progress >= 100) {
-          progress = 100;
-          clearInterval(interval);
-          setUploadingFiles((prev) =>
-            prev.map((f) =>
-              f.id === fileObj.id ? { ...f, progress: 100, status: "completed" } : f
-            )
-          );
-          toast({
-            title: "Item Listed",
-            message: `${fileObj.file.name} listed successfully`,
-            variant: "success",
-          });
-        } else {
-          setUploadingFiles((prev) =>
-            prev.map((f) => (f.id === fileObj.id ? { ...f, progress } : f))
-          );
-        }
-      }, 500);
-    });
-  };
-
-  const handleFileRemove = (id: string) => {
-    setUploadingFiles((prev) => prev.filter((f) => f.id !== id));
-  };
+  const categories = ["All", "Books", "Electronics", "Dorm", "Clothing"];
+  const locations = ["All", "Library", "North Campus", "South Hall", "Student Union"];
+  const tags = ["Urgent", "Verified Seller"];
 
   const items = [
-    { name: "Calculus Textbook", type: "Textbooks", date: "Mar 12, 2024", price: "$45", location: "North Campus" },
-    { name: "Sony Headphones", type: "Electronics", date: "Feb 28, 2024", price: "$120", location: "Library" },
-    { name: "Dorm Desk Lamp", type: "Dorm Decor", date: "Jan 15, 2024", price: "$15", location: "South Hall" },
-    { name: "Winter Jacket", type: "Clothing", date: "Dec 05, 2023", price: "$60", location: "Student Union" },
-    { name: "Scientific Calculator", type: "Electronics", date: "Nov 20, 2023", price: "$30", location: "Science Block" },
+    { 
+      id: 1,
+      name: "Calculus Early Transcendentals", 
+      category: "Books", 
+      price: 45, 
+      location: "North Campus", 
+      image: "https://picsum.photos/seed/book1/400/300",
+      tags: ["Verified Seller"],
+      trending: true,
+      date: new Date(2024, 2, 12)
+    },
+    { 
+      id: 2,
+      name: "Sony WH-1000XM4 Headphones", 
+      category: "Electronics", 
+      price: 120, 
+      location: "Library", 
+      image: "https://picsum.photos/seed/sony/400/300",
+      tags: ["Urgent"],
+      trending: true,
+      date: new Date(2024, 2, 28)
+    },
+    { 
+      id: 3,
+      name: "Modern Dorm Desk Lamp", 
+      category: "Dorm", 
+      price: 15, 
+      location: "South Hall", 
+      image: "https://picsum.photos/seed/lamp/400/300",
+      tags: [],
+      trending: false,
+      date: new Date(2024, 0, 15)
+    },
+    { 
+      id: 4,
+      name: "North Face Winter Jacket", 
+      category: "Clothing", 
+      price: 60, 
+      location: "Student Union", 
+      image: "https://picsum.photos/seed/jacket/400/300",
+      tags: ["Verified Seller"],
+      trending: false,
+      date: new Date(2023, 11, 5)
+    },
+    { 
+      id: 5,
+      name: "TI-84 Plus CE Calculator", 
+      category: "Electronics", 
+      price: 30, 
+      location: "Science Block", 
+      image: "https://picsum.photos/seed/calc/400/300",
+      tags: ["Urgent"],
+      trending: true,
+      date: new Date(2023, 10, 20)
+    },
+    { 
+      id: 6,
+      name: "Organic Chemistry Model Kit", 
+      category: "Books", 
+      price: 25, 
+      location: "Library", 
+      image: "https://picsum.photos/seed/chem/400/300",
+      tags: [],
+      trending: false,
+      date: new Date(2024, 3, 1)
+    },
   ];
+
+  const toggleTag = (tag: string) => {
+    setActiveTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
 
   const filteredItems = items.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = activeCategory === "All Items" || item.type === activeCategory;
-    return matchesSearch && matchesCategory;
+    const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+    const matchesLocation = activeLocation === "All" || item.location === activeLocation;
+    const matchesPrice = item.price <= priceRange;
+    const matchesTags = activeTags.length === 0 || activeTags.every(tag => item.tags.includes(tag));
+    return matchesSearch && matchesCategory && matchesLocation && matchesPrice && matchesTags;
   });
 
-  return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="flex justify-start">
-        <Button 
-          variant="outline" 
-          onClick={() => setActiveSection("Insights")}
-          className="rounded-xl px-6 whitespace-nowrap font-bold border-white/5 bg-white/5 hover:bg-white/10 gap-2"
-        >
-          <Activity className="size-4" /> View Insights
-        </Button>
-      </div>
-      <SectionHeader title="Campus Marketplace" subtitle="Buy and sell items within your verified student network." />
-      
-      <FileUploadCard 
-        onFilesSelected={handleFilesSelected}
-        onFileRemove={handleFileRemove}
-        uploadingFiles={uploadingFiles}
-        className="max-w-none"
-      />
+  const sortedItems = [...filteredItems].sort((a, b) => {
+    if (sortBy === "Price: Low → High") return a.price - b.price;
+    if (sortBy === "Price: High → Low") return b.price - a.price;
+    if (sortBy === "Trending") return (b.trending ? 1 : 0) - (a.trending ? 1 : 0);
+    return b.date.getTime() - a.date.getTime();
+  });
 
-      <div className="space-y-6">
-        <div className="flex items-center gap-4 overflow-x-auto pb-2 no-scrollbar">
-          {["All Items", "Textbooks", "Electronics", "Dorm Decor", "Clothing"].map((cat) => (
-            <Button 
-              key={cat} 
-              variant={activeCategory === cat ? "default" : "outline"} 
-              onClick={() => setActiveCategory(cat)}
-              className={cn(
-                "rounded-xl px-6 whitespace-nowrap font-bold",
-                activeCategory === cat ? "bg-white text-black hover:bg-white/90" : "border-white/5 bg-white/5 hover:bg-white/10"
-              )}
+  const trendingItems = items.filter(item => item.trending);
+  const recentlyAdded = items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 4);
+
+  return (
+    <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
+      {/* Top Action Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <SectionHeader 
+            title="Campus Marketplace" 
+            subtitle="Buy and sell items within your verified student network." 
+            className="mb-0"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline" 
+            onClick={() => setActiveSection("Insights")}
+            className="rounded-xl px-6 font-bold border-white/5 bg-white/5 hover:bg-white/10 gap-2 h-12"
+          >
+            <Activity className="size-4" /> Insights
+          </Button>
+          <Button 
+            className="rounded-xl px-6 font-bold bg-white text-black hover:bg-white/90 gap-2 h-12"
+            onClick={() => navigate("/add-item")}
+          >
+            <PlusCircle className="size-4" /> Post Item
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and Sort Bar */}
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-white/30" />
+          <Input 
+            placeholder="Search items..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-14 pl-12 bg-white/5 border-white/10 rounded-2xl focus:border-white/20 transition-all"
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative w-full md:w-64">
+            <ArrowUpDown className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-white/30" />
+            <select 
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="w-full h-14 pl-12 pr-4 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white appearance-none focus:outline-none focus:border-white/20"
             >
-              {cat}
-            </Button>
+              <option className="bg-zinc-900">Recently Added</option>
+              <option className="bg-zinc-900">Price: Low → High</option>
+              <option className="bg-zinc-900">Price: High → Low</option>
+              <option className="bg-zinc-900">Trending</option>
+            </select>
+          </div>
+          <Button 
+            variant="outline" 
+            size="icon"
+            onClick={() => setIsFilterVisible(!isFilterVisible)}
+            className={cn(
+              "h-14 w-14 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10",
+              isFilterVisible && "bg-white/20 border-white/30"
+            )}
+          >
+            <Filter className="size-5" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Section */}
+      <AnimatePresence>
+        {isFilterVisible && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <Card className="bg-white/[0.02] border-white/5 p-6 rounded-3xl space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                {/* Categories */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Category</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {categories.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setActiveCategory(cat)}
+                        className={cn(
+                          "px-4 py-2 rounded-xl text-xs font-bold transition-all border",
+                          activeCategory === cat 
+                            ? "bg-white text-black border-white" 
+                            : "bg-white/5 text-white/60 border-white/5 hover:border-white/20"
+                        )}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Range */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Price Range</Label>
+                    <span className="text-xs font-bold text-white">Under ${priceRange}</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="500" 
+                    step="10"
+                    value={priceRange}
+                    onChange={(e) => setPriceRange(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-white"
+                  />
+                </div>
+
+                {/* Location & Tags */}
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Location</Label>
+                  <select 
+                    value={activeLocation}
+                    onChange={(e) => setActiveLocation(e.target.value)}
+                    className="w-full h-10 px-4 bg-white/5 border border-white/5 rounded-xl text-xs font-bold text-white focus:outline-none"
+                  >
+                    {locations.map(loc => (
+                      <option key={loc} className="bg-zinc-900">{loc}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/5 flex flex-wrap gap-4 items-center">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Tags:</Label>
+                <div className="flex gap-2">
+                  {tags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => toggleTag(tag)}
+                      className={cn(
+                        "px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-2",
+                        activeTags.includes(tag)
+                          ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                          : "bg-white/5 text-white/60 border-white/5 hover:border-white/20"
+                      )}
+                    >
+                      <Tag className="size-3" /> {tag}
+                    </button>
+                  ))}
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => {
+                    setActiveCategory("All");
+                    setActiveLocation("All");
+                    setPriceRange(500);
+                    setActiveTags([]);
+                  }}
+                  className="text-[10px] font-bold uppercase tracking-widest text-white/20 hover:text-white"
+                >
+                  Reset Filters
+                </Button>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Active Filter Chips */}
+      {(activeCategory !== "All" || activeLocation !== "All" || priceRange < 500 || activeTags.length > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {activeCategory !== "All" && (
+            <div className="px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-[10px] font-bold text-white flex items-center gap-2">
+              {activeCategory} <X className="size-3 cursor-pointer" onClick={() => setActiveCategory("All")} />
+            </div>
+          )}
+          {activeLocation !== "All" && (
+            <div className="px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-[10px] font-bold text-white flex items-center gap-2">
+              {activeLocation} <X className="size-3 cursor-pointer" onClick={() => setActiveLocation("All")} />
+            </div>
+          )}
+          {priceRange < 500 && (
+            <div className="px-3 py-1.5 rounded-full bg-white/10 border border-white/10 text-[10px] font-bold text-white flex items-center gap-2">
+              Under ${priceRange} <X className="size-3 cursor-pointer" onClick={() => setPriceRange(500)} />
+            </div>
+          )}
+          {activeTags.map(tag => (
+            <div key={tag} className="px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold text-emerald-400 flex items-center gap-2">
+              {tag} <X className="size-3 cursor-pointer" onClick={() => toggleTag(tag)} />
+            </div>
           ))}
         </div>
+      )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item, i) => (
-              <Card key={i} className="flex items-center justify-between p-4">
-                <div className="flex items-center gap-4">
-                  <div className="size-12 rounded-xl bg-white/5 flex items-center justify-center text-white/40">
-                    <ShoppingBag className="size-6" />
+      {/* Trending Items Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Flame className="size-5 text-orange-500" /> Trending Items
+          </h3>
+          <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white">View All</Button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+          {trendingItems.map((item) => (
+            <div key={item.id} className="min-w-[280px] group">
+              <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                  <div className="absolute top-3 right-3 flex flex-col gap-2">
+                    <button className="size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-red-500 transition-colors">
+                      <Heart className="size-4" />
+                    </button>
                   </div>
-                  <div>
-                    <h4 className="font-bold text-white text-sm tracking-tight">{item.name}</h4>
-                    <p className="text-xs text-secondary">{item.type} • {item.price}</p>
-                    <p className="text-[10px] text-white/30 mt-1 flex items-center gap-1">
-                      <MapPin className="size-3" /> {item.location}
-                    </p>
+                  <div className="absolute bottom-3 left-3">
+                    <span className="px-2 py-1 rounded-lg bg-orange-500 text-[10px] font-black uppercase text-white shadow-lg">Trending</span>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button size="icon" variant="ghost" className="text-white/20 hover:text-white">
-                    <MessageSquare className="size-4" />
-                  </Button>
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="text-emerald-400/40 hover:text-emerald-400"
-                    onClick={() => {
-                      toast({
-                        title: "Interested",
-                        message: `Notifying seller of your interest in ${item.name}...`,
-                        variant: "default",
-                      });
-                    }}
-                  >
-                    <Heart className="size-4" />
-                  </Button>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors">{item.name}</h4>
+                    <span className="font-black text-white text-lg">${item.price}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                    <span>{item.category}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><MapPin className="size-3" /> {item.location}</span>
+                  </div>
                 </div>
               </Card>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recently Added Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Clock className="size-5 text-blue-500" /> Recently Added
+          </h3>
+          <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white">View All</Button>
+        </div>
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
+          {recentlyAdded.map((item) => (
+            <div key={item.id} className="min-w-[280px] group">
+              <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                  <div className="absolute top-3 right-3">
+                    <button className="size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-red-500 transition-colors">
+                      <Heart className="size-4" />
+                    </button>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
+                    <span className="font-black text-white text-lg">${item.price}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                    <span>{item.category}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1"><MapPin className="size-3" /> {item.location}</span>
+                  </div>
+                </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Grid Section */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <ShoppingBag className="size-5 text-white/40" /> All Listings
+          </h3>
+          <p className="text-xs font-medium text-white/40">{sortedItems.length} items found</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {/* Post Item Card */}
+          <button 
+            onClick={() => navigate("/add-item")}
+            className="group relative h-full min-h-[320px] rounded-[2rem] border-2 border-dashed border-white/10 hover:border-white/30 hover:bg-white/[0.02] transition-all duration-500 flex flex-col items-center justify-center p-8 text-center"
+          >
+            <div className="size-16 rounded-3xl bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
+              <Plus className="size-8 text-white/40 group-hover:text-white transition-colors" />
+            </div>
+            <h4 className="font-bold text-white mb-2">Post an Item</h4>
+            <p className="text-xs text-white/40 font-medium">Clear out your dorm and earn some extra cash.</p>
+          </button>
+
+          {sortedItems.length > 0 ? (
+            sortedItems.map((item) => (
+              <motion.div 
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                key={item.id} 
+                className="group relative"
+              >
+                <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500 h-full flex flex-col">
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                    
+                    {/* Overlay on hover */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <Button className="bg-white text-black hover:bg-white/90 font-bold rounded-xl px-6">
+                        View Details
+                      </Button>
+                    </div>
+
+                    <div className="absolute top-3 right-3">
+                      <button className="size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-red-500 transition-colors">
+                        <Heart className="size-4" />
+                      </button>
+                    </div>
+
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+                      {item.tags.map(tag => (
+                        <span key={tag} className={cn(
+                          "px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest text-white shadow-lg",
+                          tag === "Urgent" ? "bg-red-500" : "bg-emerald-500"
+                        )}>
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-3">
+                      <h4 className="font-bold text-white text-base leading-tight group-hover:text-primary transition-colors line-clamp-2">{item.name}</h4>
+                    </div>
+                    
+                    <div className="mt-auto space-y-4">
+                      <div className="flex items-center justify-between">
+                        <span className="font-black text-white text-xl">${item.price}</span>
+                        <div className="flex items-center gap-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                          <MapPin className="size-3" /> {item.location}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">{item.category}</span>
+                        <div className="flex gap-1">
+                          <Button size="icon" variant="ghost" className="size-8 text-white/20 hover:text-white rounded-lg">
+                            <MessageSquare className="size-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
             ))
           ) : (
-            <div className="col-span-full py-12 text-center text-secondary font-medium">
-              No items found matching your search.
+            <div className="col-span-full py-20 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="size-20 rounded-full bg-white/5 flex items-center justify-center text-white/20">
+                <ShoppingBag className="size-10" />
+              </div>
+              <div>
+                <h4 className="text-xl font-bold text-white">No items found</h4>
+                <p className="text-sm text-white/40 max-w-xs mx-auto">Try adjusting your filters or search query to find what you're looking for.</p>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setActiveCategory("All");
+                  setActiveLocation("All");
+                  setPriceRange(500);
+                  setActiveTags([]);
+                  setSearchQuery("");
+                }}
+                className="rounded-xl border-white/10 hover:bg-white/5"
+              >
+                Clear All Filters
+              </Button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Floating Action Button */}
+      <motion.button
+        whileHover={{ scale: 1.1, y: -5 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => navigate("/add-item")}
+        className="fixed bottom-8 right-8 size-16 rounded-full bg-white text-black shadow-[0_20px_40px_rgba(255,255,255,0.2)] flex items-center justify-center z-50 group overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-tr from-white via-white to-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Plus className="size-8 relative z-10" />
+      </motion.button>
     </div>
   );
 };
 
 const LostFoundView = () => {
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<"All" | "Lost" | "Found">("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState("All");
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+
+  const items = [
+    { 
+      id: 1,
+      name: "Blue Hydroflask", 
+      description: "32oz wide mouth with a small dent on the bottom. Has a 'NASA' sticker.",
+      type: "Lost",
+      status: "Match Found", 
+      location: "Library", 
+      category: "Essentials",
+      color: "text-emerald-400", 
+      bg: "bg-emerald-500/10", 
+      border: "border-emerald-500/20", 
+      glow: "shadow-[0_0_20px_rgba(16,185,129,0.1)]",
+      match: "95%",
+      date: "2 hours ago"
+    },
+    { 
+      id: 2,
+      name: "Sony WH-1000XM4", 
+      description: "Black noise-cancelling headphones left in a silver case.",
+      type: "Lost",
+      status: "Searching", 
+      location: "Cafeteria", 
+      category: "Electronics",
+      color: "text-blue-400", 
+      bg: "bg-blue-500/10", 
+      border: "border-blue-500/20", 
+      match: "88%",
+      date: "5 hours ago"
+    },
+    { 
+      id: 3,
+      name: "Calculus Early Transcendentals", 
+      description: "9th Edition by James Stewart. Name 'Alex' written on the first page.",
+      type: "Found",
+      status: "Reported Found", 
+      location: "Student Union", 
+      category: "Books",
+      color: "text-orange-400", 
+      bg: "bg-orange-500/10", 
+      border: "border-orange-500/20", 
+      match: null,
+      date: "1 day ago"
+    },
+    { 
+      id: 4,
+      name: "Car Keys with Keychain", 
+      description: "Toyota key with a red leather keychain and a small flashlight.",
+      type: "Found",
+      status: "Reported Found", 
+      location: "Gym", 
+      category: "Essentials",
+      color: "text-orange-400", 
+      bg: "bg-orange-500/10", 
+      border: "border-orange-500/20", 
+      match: null,
+      date: "3 hours ago"
+    }
+  ];
+
+  const filteredItems = items.filter(item => {
+    const matchesTab = activeTab === "All" || item.type === activeTab;
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         item.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesLocation = locationFilter === "All" || item.location === locationFilter;
+    const matchesCategory = categoryFilter === "All" || item.category === categoryFilter;
+    const matchesStatus = statusFilter === "All" || item.status === statusFilter;
+    
+    return matchesTab && matchesSearch && matchesLocation && matchesCategory && matchesStatus;
+  });
+
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <SectionHeader 
-        title="Lost & Found" 
-        subtitle="Report lost items and browse found items near you."
-        action={<Button className="bg-white text-black hover:bg-white/90 rounded-xl px-6 gap-2 font-bold"><Plus className="size-4" /> Report Lost</Button>}
-      />
-      <div className="grid grid-cols-1 gap-4">
-        {[
-          { name: "Blue Hydroflask", status: "Match Found", location: "Library", color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", match: "95%" },
-          { name: "Sony Headphones", status: "Searching", location: "Cafeteria", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", match: "88%" },
-          { name: "Keys with Keychain", status: "Reported Found", location: "Gym", color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/20", match: "N/A" },
-        ].map((item, i) => (
-          <Card key={i} className={cn("border-l-4", item.border)}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className={cn("size-12 rounded-2xl flex items-center justify-center", item.bg, item.color)}>
-                  <Search className="size-6" />
-                </div>
-                <div>
-                  <h4 className="text-lg font-bold text-white tracking-tight">{item.name}</h4>
-                  <p className="text-sm text-secondary">Status: <span className={cn("font-bold", item.color)}>{item.status}</span></p>
-                </div>
-              </div>
-              <div className="flex items-center gap-8">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Location</p>
-                  <p className="text-sm text-white/60 font-medium">{item.location}</p>
-                </div>
-                {item.match !== "N/A" && (
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Match Confidence</p>
-                    <p className="text-sm text-emerald-400 font-bold">{item.match}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </Card>
-        ))}
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-24">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <SectionHeader 
+          title="Lost & Found" 
+          subtitle="Smart recovery system for campus belongings."
+          className="mb-0"
+        />
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={() => toast({ title: "Report Lost", message: "Opening lost item report form...", variant: "default" })}
+            className="bg-white text-black hover:bg-white/90 rounded-xl px-6 gap-2 font-bold h-12"
+          >
+            <Search className="size-4" /> Report Lost
+          </Button>
+          <Button 
+            onClick={() => toast({ title: "Report Found", message: "Opening found item report form...", variant: "default" })}
+            variant="outline"
+            className="border-white/10 bg-white/5 hover:bg-white/10 text-white rounded-xl px-6 gap-2 font-bold h-12"
+          >
+            <CheckCircle className="size-4" /> Report Found
+          </Button>
+        </div>
       </div>
+
+      {/* Tabs & Search */}
+      <div className="flex flex-col lg:flex-row gap-4 items-center">
+        <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 w-full lg:w-auto">
+          {(["All", "Lost", "Found"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                "flex-1 lg:flex-none px-8 py-2.5 rounded-xl text-sm font-bold transition-all duration-300",
+                activeTab === tab 
+                  ? "bg-white text-black shadow-lg" 
+                  : "text-white/40 hover:text-white/60"
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-white/30" />
+          <Input 
+            placeholder="Search items, descriptions..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-12 pl-12 bg-white/5 border-white/10 rounded-2xl focus:border-white/20 transition-all"
+          />
+        </div>
+      </div>
+
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+          <MapPin className="size-4 text-white/40" />
+          <select 
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="bg-transparent text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer"
+          >
+            <option className="bg-zinc-900" value="All">All Locations</option>
+            <option className="bg-zinc-900">Library</option>
+            <option className="bg-zinc-900">Cafeteria</option>
+            <option className="bg-zinc-900">Gym</option>
+            <option className="bg-zinc-900">Student Union</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+          <Tag className="size-4 text-white/40" />
+          <select 
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="bg-transparent text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer"
+          >
+            <option className="bg-zinc-900" value="All">All Categories</option>
+            <option className="bg-zinc-900">Books</option>
+            <option className="bg-zinc-900">Electronics</option>
+            <option className="bg-zinc-900">Essentials</option>
+            <option className="bg-zinc-900">Clothing</option>
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl">
+          <Activity className="size-4 text-white/40" />
+          <select 
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="bg-transparent text-sm font-bold text-white focus:outline-none appearance-none cursor-pointer"
+          >
+            <option className="bg-zinc-900" value="All">All Status</option>
+            <option className="bg-zinc-900">Searching</option>
+            <option className="bg-zinc-900">Reported Found</option>
+            <option className="bg-zinc-900">Match Found</option>
+          </select>
+        </div>
+
+        {(locationFilter !== "All" || categoryFilter !== "All" || statusFilter !== "All" || searchQuery) && (
+          <Button 
+            variant="ghost" 
+            onClick={() => {
+              setLocationFilter("All");
+              setCategoryFilter("All");
+              setStatusFilter("All");
+              setSearchQuery("");
+            }}
+            className="text-white/40 hover:text-white text-xs font-bold"
+          >
+            Clear Filters
+          </Button>
+        )}
+      </div>
+
+      {/* Items Grid */}
+      <div className="grid grid-cols-1 gap-4">
+        <AnimatePresence mode="popLayout">
+          {filteredItems.map((item) => (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.3 }}
+            >
+              <Card className={cn(
+                "group border-white/10 hover:border-white/20 transition-all duration-500 overflow-hidden relative",
+                item.status === "Match Found" && cn("border-emerald-500/30", item.glow)
+              )}>
+                <div className="flex flex-col lg:flex-row gap-6 p-2">
+                  {/* Icon/Image Placeholder */}
+                  <div className={cn(
+                    "size-24 lg:size-32 rounded-3xl flex items-center justify-center shrink-0 transition-transform duration-500 group-hover:scale-105",
+                    item.bg, item.color
+                  )}>
+                    <Search className="size-10 lg:size-12 opacity-50" />
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 space-y-3">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="text-xl font-bold text-white tracking-tight">{item.name}</h4>
+                          <span className={cn(
+                            "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                            item.type === "Lost" ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                          )}>
+                            {item.type}
+                          </span>
+                        </div>
+                        <p className="text-sm text-secondary line-clamp-2 max-w-2xl">{item.description}</p>
+                      </div>
+                      
+                      <div className="flex flex-col items-end gap-2">
+                        <span className={cn(
+                          "px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border",
+                          item.color, item.bg, item.border
+                        )}>
+                          {item.status}
+                        </span>
+                        <span className="text-[10px] text-white/20 font-bold uppercase tracking-widest">{item.date}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 pt-2">
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-xs font-bold text-white/60">
+                        <MapPin className="size-3.5" />
+                        {item.location}
+                      </div>
+                      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 border border-white/5 text-xs font-bold text-white/60">
+                        <Tag className="size-3.5" />
+                        {item.category}
+                      </div>
+                      {item.match && (
+                        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-400">
+                          <TrendingUp className="size-3.5" />
+                          {item.match} Match Confidence
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Action */}
+                  <div className="flex lg:flex-col justify-end gap-2 lg:border-l lg:border-white/5 lg:pl-6">
+                    <Button variant="outline" className="flex-1 lg:flex-none h-10 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-xs font-bold">
+                      View Details
+                    </Button>
+                    {item.status === "Match Found" && (
+                      <Button className="flex-1 lg:flex-none h-10 rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 text-xs font-bold">
+                        Claim Item
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {filteredItems.length === 0 && (
+          <div className="py-20 text-center space-y-4">
+            <div className="size-20 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-6">
+              <Search className="size-10 text-white/20" />
+            </div>
+            <h3 className="text-xl font-bold text-white">No items found</h3>
+            <p className="text-secondary max-w-xs mx-auto">Try adjusting your filters or search query to find what you're looking for.</p>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setActiveTab("All");
+                setLocationFilter("All");
+                setCategoryFilter("All");
+                setStatusFilter("All");
+                setSearchQuery("");
+              }}
+              className="rounded-xl border-white/10 hover:bg-white/5"
+            >
+              Reset All Filters
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Floating Action Button */}
+      <motion.button
+        whileHover={{ scale: 1.1, y: -5 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => toast({ title: "Add Report", message: "Opening report creation modal...", variant: "default" })}
+        className="fixed bottom-8 right-8 size-16 rounded-full bg-white text-black shadow-[0_20px_40px_rgba(255,255,255,0.2)] flex items-center justify-center z-50 group overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-tr from-white via-white to-zinc-200 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Plus className="size-8 relative z-10" />
+        <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500" />
+      </motion.button>
     </div>
   );
 };

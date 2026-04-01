@@ -49,7 +49,7 @@ export default function Navbar() {
 
         <div className="flex items-center gap-4">
           <HoverAnimationButton 
-            onClick={() => navigate("/role-selection")}
+            onClick={() => navigate("/signup")}
             className="!p-0"
           >
             Get Started

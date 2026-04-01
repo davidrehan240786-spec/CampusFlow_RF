@@ -185,7 +185,6 @@ const EyeBall = ({
 function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const selectedRole = location.state?.role as "patient" | "doctor" | undefined;
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -358,14 +357,18 @@ function LoginPage() {
 
     // Bypass authentication for development convenience
     console.log("✅ Login successful (Bypassed)!");
-    const roleName = selectedRole === "doctor" ? "Staff" : selectedRole === "patient" ? "Student" : "";
+    
+    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
+    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
+    localStorage.setItem("userRole", role);
+    
     toast({
       title: "Login Successful",
-      message: `Welcome back${roleName ? `, ${roleName}` : ""}!`,
+      message: `Welcome back to CampusFlow!`,
       variant: "success",
     });
     
-    if (selectedRole === "doctor") {
+    if (role === "doctor") {
       navigate("/staff-dashboard");
     } else {
       navigate("/dashboard");
@@ -602,7 +605,7 @@ function LoginPage() {
           {/* Header */}
           <div className="text-center mb-10">
             <h1 className="text-3xl font-bold tracking-tight mb-2">
-              {selectedRole ? `Welcome back, ${selectedRole === "doctor" ? "Staff" : "Student"}!` : "Welcome back"}
+              Welcome back
             </h1>
             <p className="text-muted-foreground text-sm">Enter your details to access your campus dashboard.</p>
           </div>
