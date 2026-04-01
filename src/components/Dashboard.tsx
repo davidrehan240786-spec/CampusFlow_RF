@@ -24,6 +24,9 @@ import {
   ArrowLeft,
   ShoppingBag,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
+  Calendar,
   MapPin,
   Filter,
   ArrowUpDown,
@@ -31,7 +34,15 @@ import {
   Tag,
   PlusCircle,
   TrendingUp,
-  Star
+  Star,
+  Award,
+  History,
+  UserCheck,
+  AlertCircle,
+  ThumbsUp,
+  Eye,
+  Users,
+  PackageCheck
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,7 +63,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { FileUploadCard, UploadingFile } from "@/components/ui/file-upload-card";
 import { SearchBar } from "@/components/ui/search-bar";
 import { useToast } from "@/lib/toast-context";
-
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { TextRoll } from "@/components/ui/animated-menu";
 
 // --- Types ---
@@ -95,10 +107,42 @@ const INSIGHTS_DATA = [
   { time: "Sat", views: 600, interest: 150, success: 88 },
 ];
 
+const TOP_PERFORMING_ITEMS = [
+  { id: 1, title: "iPhone 13 Pro", views: 450, interest: 28, status: "Trending", image: "https://picsum.photos/seed/iphone/200/200" },
+  { id: 2, title: "MacBook Air M1", views: 380, interest: 15, status: "Sold", image: "https://picsum.photos/seed/macbook/200/200" },
+  { id: 3, title: "Calculator TI-84", views: 210, interest: 12, status: "Trending", image: "https://picsum.photos/seed/calc/200/200" },
+  { id: 4, title: "Dorm Desk Lamp", views: 180, interest: 8, status: "Trending", image: "https://picsum.photos/seed/lamp/200/200" },
+];
+
+const TRENDING_CAMPUS = [
+  { id: 1, title: "Textbooks (CS101)", price: "$45", demand: "High Demand", image: "https://picsum.photos/seed/book/200/200" },
+  { id: 2, title: "Electric Scooter", price: "$250", demand: "High Demand", image: "https://picsum.photos/seed/scooter/200/200" },
+  { id: 3, title: "Gym Membership", price: "$30", demand: "High Demand", image: "https://picsum.photos/seed/gym/200/200" },
+];
+
+const INSIGHTS_ACTIVITY = [
+  { id: 1, text: "Your item 'iPhone 13 Pro' got 12 new views", time: "2m ago", icon: Eye, color: "text-blue-400" },
+  { id: 2, text: "Someone contacted you about 'MacBook Air'", time: "15m ago", icon: MessageSquare, color: "text-emerald-400" },
+  { id: 3, text: "Item 'Dorm Desk Lamp' sold successfully", time: "1h ago", icon: PackageCheck, color: "text-purple-400" },
+  { id: 4, text: "Your recovery success rate increased to 95%", time: "3h ago", icon: TrendingUp, color: "text-emerald-400" },
+];
+
 const RECENT_ACTIVITY = [
   { id: 1, actionKey: "dash_listed_item", userKey: "dash_you", timeKey: "dash_hours_ago", timeVal: 2, icon: ShoppingBag, color: "text-blue-500" },
   { id: 2, actionKey: "dash_reported_lost", userKey: "dash_you", timeKey: "dash_hours_ago", timeVal: 5, icon: Search, color: "text-orange-500" },
   { id: 3, actionKey: "dash_completed_meetup", userKey: "dash_you", timeKey: "dash_day_ago", timeVal: 1, icon: CheckCircle, color: "text-emerald-500" },
+];
+
+const UPCOMING_MEETUPS = [
+  { id: 1, item: "Calculus Textbook", time: "Today, 2:00 PM", location: "Library Cafe", status: "Confirmed", icon: ShoppingBag },
+  { id: 2, item: "Sony Headphones", time: "Tomorrow, 11:00 AM", location: "Student Union", status: "Pending", icon: ShoppingBag },
+  { id: 3, item: "Dorm Desk Lamp", time: "Apr 3, 4:30 PM", location: "North Quad", status: "Confirmed", icon: PackageCheck },
+];
+
+const MEETUP_HISTORY = [
+  { id: 1, item: "iPhone 13 Pro", date: "Mar 28, 2024", location: "Starbucks", status: "Completed", icon: CheckCircle2 },
+  { id: 2, item: "MacBook Air M1", date: "Mar 25, 2024", location: "Library", status: "Completed", icon: CheckCircle2 },
+  { id: 3, item: "TI-84 Calculator", date: "Mar 20, 2024", location: "Engineering Bldg", status: "Cancelled", icon: XCircle },
 ];
 
 // --- Components ---
@@ -1082,57 +1126,170 @@ const LostFoundView = () => {
   );
 };
 
-const TrustSystemView = () => (
-  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <SectionHeader title="Student Trust System" subtitle="Verified student network for safe campus transactions." />
-    
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-      <div className="flex flex-col items-center justify-center p-8 glass rounded-[3rem] border border-white/10">
-        <div className="p-4 bg-white rounded-3xl mb-6">
-          <QrCode className="size-64 text-black" />
-        </div>
-        <p className="text-white font-bold text-xl mb-2">Your Trust ID</p>
-        <p className="text-secondary text-sm font-medium">Verified Student • Score: 98%</p>
-      </div>
+const TRUST_INSIGHTS = [
+  { label: "Successful Trades", value: "48", icon: ShoppingBag, color: "text-blue-400" },
+  { label: "Return Rate", value: "100%", icon: ArrowUpDown, color: "text-emerald-400" },
+  { label: "Community Activity", value: "High", icon: Activity, color: "text-purple-400" },
+];
 
-      <div className="space-y-6">
-        <Card className="glass border-white/10">
-          <h3 className="text-xl font-bold text-white mb-4">Verification Settings</h3>
-          <div className="space-y-6">
+const TRUST_RECENT_ACTIVITY = [
+  { id: 1, text: "Completed 3 trades this week", time: "2 days ago", icon: CheckCircle },
+  { id: 2, text: "Verified student email", time: "1 month ago", icon: UserCheck },
+  { id: 3, text: "Received 5-star rating", time: "1 week ago", icon: Star },
+];
+
+const TrustSystemView = () => (
+  <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <SectionHeader 
+      title="Student Trust System" 
+      subtitle="Verified student network for safe campus transactions." 
+    />
+    
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Main Trust Card */}
+      <div className="lg:col-span-5 space-y-6">
+        <Card className="glass border-white/10 p-8 flex flex-col items-center text-center relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 gap-1.5 py-1 px-3">
+              <Shield className="size-3" /> Verified Student
+            </Badge>
+          </div>
+          
+          <div className="relative mb-6">
+            <div className="size-32 rounded-full bg-white/10 p-1 ring-4 ring-white/5 group-hover:ring-white/10 transition-all duration-500">
+              <div className="size-full rounded-full bg-zinc-900 flex items-center justify-center overflow-hidden">
+                <User className="size-16 text-white/20" />
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 size-10 rounded-full bg-emerald-500 border-4 border-black flex items-center justify-center text-white shadow-lg">
+              <CheckCircle className="size-5" />
+            </div>
+          </div>
+
+          <div className="space-y-1 mb-8">
+            <h3 className="text-2xl font-bold text-white tracking-tight">Sarah Johnson</h3>
+            <p className="text-secondary text-sm font-medium">Computer Science • Class of 2025</p>
+          </div>
+
+          <div className="w-full space-y-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-white">Public Trust Score</p>
-                <p className="text-sm text-secondary">Show your score on listings</p>
-              </div>
-              <Checkbox id="public-score" defaultChecked className="size-6 rounded-lg border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black" />
+              <span className="text-sm font-bold text-white/40 uppercase tracking-widest">Trust Score</span>
+              <span className="text-2xl font-black text-white">98%</span>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/20">Trust Level</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {["Bronze", "Silver", "Gold"].map((level) => (
-                  <Button key={level} variant="outline" className={cn(
-                    "rounded-xl border-white/5 bg-white/5 hover:bg-white/10 text-xs font-bold",
-                    level === "Gold" && "border-white/40 bg-white/10 text-white"
-                  )}>
-                    {level}
-                  </Button>
-                ))}
-              </div>
+            <Progress value={98} className="h-3 bg-white/5" />
+            <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-widest text-white/20">
+              <span>Bronze</span>
+              <span className="text-white/60">Gold Level</span>
+              <span>Platinum</span>
             </div>
-            <div className="pt-4 flex gap-3">
-              <Button className="flex-1 h-12 rounded-xl bg-white text-black hover:bg-white/90 font-bold gap-2">
-                <Share2 className="size-4" /> Share Profile
-              </Button>
-              <Button variant="outline" className="flex-1 h-12 rounded-xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold">
-                View Badges
-              </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 w-full mt-8">
+            <Button className="bg-white text-black hover:bg-white/90 font-bold rounded-xl h-12 gap-2">
+              <Share2 className="size-4" /> Share ID
+            </Button>
+            <Button variant="outline" className="border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl h-12">
+              Edit Profile
+            </Button>
+          </div>
+        </Card>
+
+        <Card className="glass border-white/10 p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Award className="size-5 text-emerald-400" />
+            <h4 className="font-bold text-white">Earned Badges</h4>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <ThumbsUp className="size-4" />
+              <span className="text-xs font-bold">Trusted Seller</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
+              <Activity className="size-4" />
+              <span className="text-xs font-bold">Active User</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+              <UserCheck className="size-4" />
+              <span className="text-xs font-bold">Early Adopter</span>
             </div>
           </div>
         </Card>
-        
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/5">
-          <Shield className="size-5 text-emerald-400" />
-          <p className="text-xs text-white/40 font-medium">Your identity is verified via student email and campus ID.</p>
+      </div>
+
+      {/* Trust Insights & Activity */}
+      <div className="lg:col-span-7 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {TRUST_INSIGHTS.map((insight, i) => (
+            <Card key={i} className="glass border-white/10 p-5 space-y-4">
+              <div className={cn("size-10 rounded-xl bg-white/5 flex items-center justify-center", insight.color)}>
+                <insight.icon className="size-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-black text-white">{insight.value}</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">{insight.label}</p>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="glass border-white/10 p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <History className="size-5 text-white/40" />
+              <h4 className="font-bold text-white">Recent Trust Activity</h4>
+            </div>
+            <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest text-white/20 hover:text-white">
+              View History
+            </Button>
+          </div>
+          <div className="space-y-4">
+            {TRUST_RECENT_ACTIVITY.map((activity) => (
+              <div key={activity.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-white/40">
+                    <activity.icon className="size-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">{activity.text}</p>
+                    <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest">{activity.time}</p>
+                  </div>
+                </div>
+                <ChevronRight className="size-4 text-white/10" />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="glass border-white/10 p-6">
+            <h4 className="font-bold text-white mb-4">Verification Settings</h4>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">Public Trust Score</p>
+                  <p className="text-[10px] text-white/40">Show your score on listings</p>
+                </div>
+                <Checkbox id="public-score" defaultChecked className="size-5 rounded-lg border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black" />
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white">Verified Status</p>
+                  <p className="text-[10px] text-white/40">Display verification badge</p>
+                </div>
+                <Checkbox id="verified-status" defaultChecked className="size-5 rounded-lg border-white/20 data-[state=checked]:bg-white data-[state=checked]:text-black" />
+              </div>
+            </div>
+          </Card>
+
+          <Card className="glass border-emerald-500/20 bg-emerald-500/5 p-6 flex flex-col justify-center">
+            <div className="flex items-center gap-3 mb-3">
+              <Shield className="size-6 text-emerald-400" />
+              <h4 className="font-bold text-white">Safe User Status</h4>
+            </div>
+            <p className="text-sm text-emerald-400/80 font-medium leading-relaxed">
+              No reports found. You are currently recognized as a safe and reliable member of the campus community.
+            </p>
+          </Card>
         </div>
       </div>
     </div>
@@ -1140,117 +1297,456 @@ const TrustSystemView = () => (
 );
 
 const InsightsView = () => (
-  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+  <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
     <SectionHeader title="Marketplace Insights" subtitle="Track your listing performance and campus trends." />
     
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <Card className="border-emerald-500/20 bg-emerald-500/5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="size-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <ShoppingBag className="size-6" />
-          </div>
-          <span className="text-xs font-bold text-emerald-400">+12%</span>
+    {/* Quick Stats Grid */}
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="glass border-white/10 p-6 space-y-4">
+        <div className="size-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+          <Eye className="size-5" />
         </div>
-        <p className="text-3xl font-bold text-white">850 <span className="text-sm font-medium text-white/40">Views</span></p>
-        <p className="text-xs text-white/40 mt-1">Total Listing Views</p>
+        <div>
+          <p className="text-2xl font-black text-white">850</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Total Views</p>
+        </div>
       </Card>
-      <Card className="border-white/10 bg-white/5 glass">
-        <div className="flex items-center justify-between mb-4">
-          <div className="size-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-            <MessageSquare className="size-6" />
-          </div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">+5%</span>
+      <Card className="glass border-white/10 p-6 space-y-4">
+        <div className="size-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+          <Users className="size-5" />
         </div>
-        <p className="text-3xl font-bold text-white">210 <span className="text-sm font-medium text-secondary">Inquiries</span></p>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mt-1">Interested Users</p>
+        <div>
+          <p className="text-2xl font-black text-white">210</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Interested Users</p>
+        </div>
       </Card>
-      <Card className="border-blue-500/20 bg-blue-500/5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="size-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-            <Search className="size-6" />
-          </div>
-          <span className="text-xs font-bold text-blue-400">95%</span>
+      <Card className="glass border-white/10 p-6 space-y-4">
+        <div className="size-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+          <PackageCheck className="size-5" />
         </div>
-        <p className="text-3xl font-bold text-white">95 <span className="text-sm font-medium text-white/40">%</span></p>
-        <p className="text-xs text-white/40 mt-1">Recovery Success Rate</p>
+        <div>
+          <p className="text-2xl font-black text-white">42</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Items Sold</p>
+        </div>
+      </Card>
+      <Card className="glass border-white/10 p-6 space-y-4">
+        <div className="size-10 rounded-xl bg-orange-500/10 flex items-center justify-center text-orange-400">
+          <TrendingUp className="size-5" />
+        </div>
+        <div>
+          <p className="text-2xl font-black text-white">95%</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40">Recovery Success</p>
+        </div>
       </Card>
     </div>
 
-      <Card className="h-[400px] p-6 glass border-white/10">
-      <h3 className="text-lg font-bold text-white mb-6">Listing Views History</h3>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={INSIGHTS_DATA}>
-          <defs>
-            <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#ffffff" stopOpacity={0.1}/>
-              <stop offset="95%" stopColor="#ffffff" stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
-          <XAxis dataKey="time" stroke="#ffffff20" fontSize={10} tickLine={false} axisLine={false} />
-          <YAxis stroke="#ffffff20" fontSize={10} tickLine={false} axisLine={false} />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#000', border: '1px solid #ffffff10', borderRadius: '12px' }}
-            itemStyle={{ color: '#fff' }}
-          />
-          <Area type="monotone" dataKey="views" stroke="#ffffff" strokeWidth={2} fillOpacity={1} fill="url(#colorViews)" />
-        </AreaChart>
-      </ResponsiveContainer>
-    </Card>
-  </div>
-);
-
-const MeetupView = () => (
-  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-    <SectionHeader title="Campus Meetups" subtitle="Schedule and manage safe meetups for item exchanges." />
-    
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div className="flex flex-col items-center justify-center space-y-8 py-12">
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="size-64 rounded-full bg-blue-600 shadow-[0_0_80px_rgba(37,99,235,0.4)] flex items-center justify-center text-white relative group"
-        >
-          <div className="absolute inset-0 rounded-full border-8 border-white/20 animate-ping duration-[2000ms]" />
-          <div className="flex flex-col items-center">
-            <Clock className="size-20 mb-2" />
-            <span className="text-2xl font-black uppercase tracking-tighter">Meetup</span>
-          </div>
-        </motion.button>
-        <p className="text-white/60 font-medium text-center max-w-xs">Schedule a secure meetup at a verified campus location.</p>
-      </div>
-
-      <div className="space-y-6">
-        <Card className="glass border-white/10">
-          <div className="flex items-center gap-4 mb-4">
-            <MapPin className="size-8 text-white" />
-            <h4 className="font-bold text-lg text-white">Verified Meetup Spots</h4>
-          </div>
-          <p className="text-sm font-medium text-secondary mb-6">Choose from safe, high-traffic campus locations for your exchange.</p>
-          <Button className="w-full bg-white text-black hover:bg-white/90 font-bold rounded-xl h-12">Browse Safe Zones</Button>
-        </Card>
-
-        <div className="space-y-4">
-          <h4 className="text-sm font-bold text-white/40 uppercase tracking-widest">Upcoming Meetups</h4>
-          {[
-            { item: "Calculus Textbook", time: "Today, 2:00 PM", location: "Library Cafe" },
-            { item: "Sony Headphones", time: "Tomorrow, 11:00 AM", location: "Student Union" },
-          ].map((meetup, i) => (
-            <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-white">{meetup.item}</p>
-                <p className="text-xs text-white/40">{meetup.time} • {meetup.location}</p>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Top Performing Items */}
+      <div className="lg:col-span-8 space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-bold text-white tracking-tight">Top Performing Items</h3>
+          <Button variant="link" className="text-white/40 hover:text-white text-xs font-bold uppercase tracking-widest">View All</Button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {TOP_PERFORMING_ITEMS.map((item) => (
+            <Card key={item.id} className="glass border-white/10 p-4 flex gap-4 group hover:border-white/20 transition-all">
+              <div className="size-20 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
+                <img src={item.image} alt={item.title} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
               </div>
-              <Button size="sm" variant="ghost" className="text-white/40 hover:text-white">
-                <ChevronRight className="size-4" />
-              </Button>
-            </div>
+              <div className="flex flex-col justify-between py-1">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h4 className="font-bold text-white text-sm truncate max-w-[120px]">{item.title}</h4>
+                    <Badge variant="outline" className={cn(
+                      "text-[8px] px-1.5 py-0 h-4 font-bold uppercase tracking-widest",
+                      item.status === "Trending" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    )}>
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{item.views} Views • {item.interest} Interested</p>
+                </div>
+                <div className="flex items-center gap-1 text-emerald-400">
+                  <TrendingUp className="size-3" />
+                  <span className="text-[10px] font-bold uppercase tracking-widest">High Interest</span>
+                </div>
+              </div>
+            </Card>
           ))}
         </div>
+
+        {/* Trending on Campus */}
+        <div className="pt-4 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white tracking-tight">Trending on Campus</h3>
+            <div className="flex items-center gap-2">
+              <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Live Updates</span>
+            </div>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            {TRENDING_CAMPUS.map((item) => (
+              <Card key={item.id} className="glass border-white/10 p-4 flex items-center gap-4 min-w-[280px] hover:border-white/20 transition-all">
+                <div className="size-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
+                  <img src={item.image} alt={item.title} className="size-full object-cover" referrerPolicy="no-referrer" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-bold text-white text-sm mb-1">{item.title}</h4>
+                  <div className="flex items-center justify-between">
+                    <span className="text-emerald-400 font-bold">{item.price}</span>
+                    <Badge className="bg-white/5 text-white/60 border-white/10 text-[8px] font-bold uppercase tracking-widest">
+                      {item.demand}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="lg:col-span-4 space-y-6">
+        <h3 className="text-xl font-bold text-white tracking-tight">Recent Activity</h3>
+        <Card className="glass border-white/10 p-6">
+          <div className="space-y-6">
+            {INSIGHTS_ACTIVITY.map((activity) => (
+              <div key={activity.id} className="flex gap-4 group cursor-pointer">
+                <div className={cn("size-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-white/10 transition-colors", activity.color)}>
+                  <activity.icon className="size-5" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-white/80 leading-tight group-hover:text-white transition-colors">{activity.text}</p>
+                  <p className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{activity.time}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Button variant="outline" className="w-full mt-8 border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl h-12">
+            View Full History
+          </Button>
+        </Card>
+
+        {/* Action Card */}
+        <Card className="bg-blue-600 p-6 rounded-3xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform">
+            <TrendingUp className="size-20" />
+          </div>
+          <div className="relative z-10 space-y-4">
+            <h4 className="text-xl font-black text-white leading-tight">Boost Your Listings</h4>
+            <p className="text-white/80 text-sm font-medium">Items with high-quality photos get 3x more views on campus.</p>
+            <Button className="bg-white text-blue-600 hover:bg-white/90 font-bold rounded-xl w-full">
+              Optimize Now
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   </div>
 );
+
+const RescheduleModal = ({ meetup, onClose }: { meetup: any, onClose: () => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="w-full max-w-md glass border-white/10 p-8 space-y-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+        >
+          <X className="size-6" />
+        </button>
+
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold text-white tracking-tight">Reschedule Meetup</h3>
+          <p className="text-sm text-white/40">Change the time or location for your exchange of <span className="text-white font-bold">{meetup.item}</span>.</p>
+        </div>
+
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">New Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+              <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-sm" defaultValue={meetup.location} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">New Date</Label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-xs" placeholder="Select date" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">New Time</Label>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-xs" placeholder="Select time" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="outline" className="flex-1 border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl h-12" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button className="flex-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl h-12" onClick={onClose}>
+            Save Changes
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const CancelModal = ({ meetup, onClose }: { meetup: any, onClose: () => void }) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="w-full max-w-md glass border-white/10 p-8 space-y-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+        >
+          <X className="size-6" />
+        </button>
+
+        <div className="size-16 rounded-2xl bg-red-500/10 flex items-center justify-center text-red-400 mb-2">
+          <AlertCircle className="size-8" />
+        </div>
+
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold text-white tracking-tight">Cancel Meetup?</h3>
+          <p className="text-sm text-white/40 leading-relaxed">
+            Are you sure you want to cancel the meetup for <span className="text-white font-bold">{meetup.item}</span>? This will notify the other student.
+          </p>
+        </div>
+
+        <div className="flex gap-3 pt-4">
+          <Button variant="outline" className="flex-1 border-white/10 bg-white/5 hover:bg-white/10 text-white font-bold rounded-xl h-12" onClick={onClose}>
+            Keep Meetup
+          </Button>
+          <Button className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl h-12" onClick={onClose}>
+            Yes, Cancel
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const MeetupView = () => {
+  const [selectedMeetup, setSelectedMeetup] = React.useState<any>(null);
+  const [modalType, setModalType] = React.useState<'reschedule' | 'cancel' | null>(null);
+
+  const handleOpenModal = (meetup: any, type: 'reschedule' | 'cancel') => {
+    setSelectedMeetup(meetup);
+    setModalType(type);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMeetup(null);
+    setModalType(null);
+  };
+
+  return (
+  <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <SectionHeader title="Campus Meetups" subtitle="Schedule and manage safe meetups for item exchanges." />
+    
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Left Column: Schedule & Upcoming */}
+      <div className="lg:col-span-8 space-y-8">
+        {/* Upcoming Meetups */}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white tracking-tight">Upcoming Meetups</h3>
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-400 border-blue-500/20 font-bold uppercase tracking-widest text-[10px]">
+              {UPCOMING_MEETUPS.length} Scheduled
+            </Badge>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {UPCOMING_MEETUPS.map((meetup) => (
+              <Card key={meetup.id} className="glass border-white/10 p-5 group hover:border-white/20 transition-all">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="size-12 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 group-hover:text-white transition-colors">
+                    <meetup.icon className="size-6" />
+                  </div>
+                  <Badge className={cn(
+                    "text-[8px] font-bold uppercase tracking-widest",
+                    meetup.status === "Confirmed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-orange-500/10 text-orange-400 border-orange-500/20"
+                  )}>
+                    {meetup.status}
+                  </Badge>
+                </div>
+                <div className="space-y-3">
+                  <h4 className="text-lg font-bold text-white leading-tight">{meetup.item}</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-white/40">
+                      <Clock className="size-3.5" />
+                      <span className="text-xs font-medium">{meetup.time}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-white/40">
+                      <MapPin className="size-3.5" />
+                      <span className="text-xs font-medium">{meetup.location}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-6 pt-4 border-t border-white/5 flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/5"
+                    onClick={() => handleOpenModal(meetup, 'reschedule')}
+                  >
+                    Reschedule
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1 h-9 text-[10px] font-bold uppercase tracking-widest text-red-400/60 hover:text-red-400 hover:bg-red-400/5"
+                    onClick={() => handleOpenModal(meetup, 'cancel')}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+
+        {/* Meetup History */}
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold text-white tracking-tight">Meetup History</h3>
+          <Card className="glass border-white/10 overflow-hidden">
+            <div className="divide-y divide-white/5">
+              {MEETUP_HISTORY.map((history) => (
+                <div key={history.id} className="p-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "size-10 rounded-xl flex items-center justify-center",
+                      history.status === "Completed" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"
+                    )}>
+                      <history.icon className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-white">{history.item}</p>
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{history.date} • {history.location}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className={cn(
+                    "text-[8px] font-bold uppercase tracking-widest opacity-40 group-hover:opacity-100 transition-opacity",
+                    history.status === "Completed" ? "border-emerald-500/20 text-emerald-400" : "border-red-500/20 text-red-400"
+                  )}>
+                    {history.status}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Right Column: Schedule Form */}
+      <div className="lg:col-span-4 space-y-6">
+        <h3 className="text-xl font-bold text-white tracking-tight">Schedule Meetup</h3>
+        <Card className="glass border-white/10 p-6 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Select Item</Label>
+              <div className="relative">
+                <ShoppingBag className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-sm" placeholder="What are you exchanging?" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Location</Label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-sm" placeholder="Verified safe zone..." />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Date</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                  <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-xs" placeholder="Select date" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-white/40">Time</Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-white/20" />
+                  <Input className="bg-white/5 border-white/10 pl-10 rounded-xl h-12 text-xs" placeholder="Select time" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <Button className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl h-14 shadow-[0_0_20px_rgba(37,99,235,0.2)]">
+            Confirm Meetup
+          </Button>
+          <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 flex gap-3">
+            <Shield className="size-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <p className="text-[10px] font-medium text-emerald-400/80 leading-relaxed">
+              All meetups are monitored for safety. Meet in well-lit, public areas as suggested by the app.
+            </p>
+          </div>
+        </Card>
+
+        {/* Quick Tips */}
+        <div className="space-y-4">
+          <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Safe Exchange Tips</h4>
+          <div className="space-y-3">
+            {[
+              "Always meet during daylight hours",
+              "Bring a friend if possible",
+              "Verify item before payment",
+              "Use digital payments for safety"
+            ].map((tip, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs text-white/60">
+                <div className="size-1 rounded-full bg-blue-500" />
+                <span>{tip}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Modals */}
+    <AnimatePresence>
+      {modalType === 'reschedule' && selectedMeetup && (
+        <RescheduleModal meetup={selectedMeetup} onClose={handleCloseModal} />
+      )}
+      {modalType === 'cancel' && selectedMeetup && (
+        <CancelModal meetup={selectedMeetup} onClose={handleCloseModal} />
+      )}
+    </AnimatePresence>
+  </div>
+);
+};
 
 const ChatView = () => (
   <div className="h-[calc(100vh-12rem)] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-700">
