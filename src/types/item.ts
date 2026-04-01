@@ -1,5 +1,3 @@
-import { Timestamp } from "firebase/firestore";
-
 export type ItemType = "sell" | "donate";
 export type ItemStatus = "available" | "sold";
 
@@ -14,7 +12,7 @@ export interface Item {
   tags: string[];
   userId: string;
   status: ItemStatus;
-  createdAt: Timestamp | Date; // Use Timestamp for Firestore, Date for local handling
+  createdAt: Date;
 }
 
 // Example document demonstrating the structure
@@ -32,5 +30,5 @@ export const exampleItem: Item = {
   tags: ["math", "engineering", "first-year"],
   userId: "user_abc123",
   status: "available",
-  createdAt: new Date(), // When writing to Firestore, you would typically use serverTimestamp() or Timestamp.now()
+  createdAt: new Date(),
 };
