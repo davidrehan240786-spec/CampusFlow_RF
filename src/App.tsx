@@ -47,10 +47,13 @@ export default function App() {
           <Route path="/toast-demo" element={<ToasterDemo />} />
           <Route path="/contact" element={<ContactPage />} />
           
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute allowedRoles={['student']} />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/staff-dashboard" element={<StaffDashboard />} />
             <Route path="/add-item" element={<AddItemPage />} />
+          </Route>
+          
+          <Route element={<ProtectedRoute allowedRoles={['staff']} />}>
+            <Route path="/staff-dashboard" element={<StaffDashboard />} />
           </Route>
           
           <Route path="/" element={

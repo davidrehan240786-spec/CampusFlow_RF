@@ -1,8 +1,12 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-export default function ProtectedRoute() {
-  const { user, loading } = useAuth();
+interface ProtectedRouteProps {
+  allowedRoles?: ('student' | 'staff')[];
+}
+
+export default function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+  const { user, dbUser, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -19,6 +23,12 @@ export default function ProtectedRoute() {
     // trying to go to when they were redirected. This allows us to send them
     // along to that page after they login, which is a nicer user experience.
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  // If the route has specific role requirements
+  if (allowedRoles && dbUser && !allowedRoles.includes(dbUser.role)) {
+    // They are logged in but don't have the right role - redirect them to their home
+    return <Navigate to={dbUser.role === 'staff' ? '/staff-dashboard' : '/dashboard'} replace />;
   }
 
   return <Outlet />;

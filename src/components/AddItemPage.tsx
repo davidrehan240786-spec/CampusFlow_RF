@@ -24,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/toast-context";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 
 // --- Types ---
 
@@ -52,6 +54,7 @@ const TIME_SLOTS = ["Morning (8AM - 12PM)", "Afternoon (12PM - 4PM)", "Evening (
 export default function AddItemPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ItemData>({
@@ -126,12 +129,45 @@ export default function AddItemPage() {
     if (formData.images.length <= 1) setSmartAssist(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || (!formData.price && !formData.isFree)) {
       toast({
         title: "Missing Fields",
         message: "Please fill in the required fields.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        message: "You must be logged in to post an item.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const { error } = await supabase.from('listings').insert([
+      {
+        title: formData.title,
+        description: formData.description,
+        price: formData.isFree ? 0 : parseFloat(formData.price),
+        seller_id: user.id,
+        category: formData.category,
+        condition: formData.condition,
+        location: formData.location,
+        type: formData.type === 'Donate' ? 'Sale' : formData.type, // Map Donate to Sale with 0 price in DB or adjust if schema allows Donate
+        image_url: formData.images.length > 0 ? formData.images[0] : null,
+      }
+    ]);
+
+    if (error) {
+      console.error(error);
+      toast({
+        title: "Error",
+        message: "Failed to post your item. Please try again.",
         variant: "destructive"
       });
       return;

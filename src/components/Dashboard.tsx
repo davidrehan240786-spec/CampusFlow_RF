@@ -50,6 +50,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, A
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -306,74 +307,42 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
   const locations = ["All", "Library", "North Campus", "South Hall", "Student Union"];
   const tags = ["Urgent", "Verified Seller"];
 
-  const items = [
-    { 
-      id: 1,
-      name: "Calculus Early Transcendentals", 
-      category: "Books", 
-      price: 45, 
-      location: "North Campus", 
-      image: "https://picsum.photos/seed/book1/400/300",
-      tags: ["Verified Seller"],
-      trending: true,
-      date: new Date(2024, 2, 12)
-    },
-    { 
-      id: 2,
-      name: "Sony WH-1000XM4 Headphones", 
-      category: "Electronics", 
-      price: 120, 
-      location: "Library", 
-      image: "https://picsum.photos/seed/sony/400/300",
-      tags: ["Urgent"],
-      trending: true,
-      date: new Date(2024, 2, 28)
-    },
-    { 
-      id: 3,
-      name: "Modern Dorm Desk Lamp", 
-      category: "Dorm", 
-      price: 15, 
-      location: "South Hall", 
-      image: "https://picsum.photos/seed/lamp/400/300",
-      tags: [],
-      trending: false,
-      date: new Date(2024, 0, 15)
-    },
-    { 
-      id: 4,
-      name: "North Face Winter Jacket", 
-      category: "Clothing", 
-      price: 60, 
-      location: "Student Union", 
-      image: "https://picsum.photos/seed/jacket/400/300",
-      tags: ["Verified Seller"],
-      trending: false,
-      date: new Date(2023, 11, 5)
-    },
-    { 
-      id: 5,
-      name: "TI-84 Plus CE Calculator", 
-      category: "Electronics", 
-      price: 30, 
-      location: "Science Block", 
-      image: "https://picsum.photos/seed/calc/400/300",
-      tags: ["Urgent"],
-      trending: true,
-      date: new Date(2023, 10, 20)
-    },
-    { 
-      id: 6,
-      name: "Organic Chemistry Model Kit", 
-      category: "Books", 
-      price: 25, 
-      location: "Library", 
-      image: "https://picsum.photos/seed/chem/400/300",
-      tags: [],
-      trending: false,
-      date: new Date(2024, 3, 1)
-    },
-  ];
+  const [items, setItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  useEffect(() => {
+    async function fetchMarketplaceItems() {
+      try {
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .eq("type", "Sale")
+          .eq("status", "Active");
+
+        if (error) throw error;
+        
+        if (data) {
+          const formatted = data.map(item => ({
+            id: item.id,
+            name: item.title,
+            category: item.category || "Other",
+            price: Number(item.price) || 0,
+            location: item.location || "Campus",
+            image: item.image_url || `https://picsum.photos/seed/${item.id}/400/300`,
+            tags: item.condition ? [item.condition] : [],
+            trending: item.views > 50,
+            date: new Date(item.created_at)
+          }));
+          setItems(formatted);
+        }
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+      } finally {
+        setLoadingItems(false);
+      }
+    }
+    fetchMarketplaceItems();
+  }, []);
 
   const toggleTag = (tag: string) => {
     setActiveTags(prev => 
@@ -806,65 +775,46 @@ const LostFoundView = () => {
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
 
-  const items = [
-    { 
-      id: 1,
-      name: "Blue Hydroflask", 
-      description: "32oz wide mouth with a small dent on the bottom. Has a 'NASA' sticker.",
-      type: "Lost",
-      status: "Match Found", 
-      location: "Library", 
-      category: "Essentials",
-      color: "text-emerald-400", 
-      bg: "bg-emerald-500/10", 
-      border: "border-emerald-500/20", 
-      glow: "shadow-[0_0_20px_rgba(16,185,129,0.1)]",
-      match: "95%",
-      date: "2 hours ago"
-    },
-    { 
-      id: 2,
-      name: "Sony WH-1000XM4", 
-      description: "Black noise-cancelling headphones left in a silver case.",
-      type: "Lost",
-      status: "Searching", 
-      location: "Cafeteria", 
-      category: "Electronics",
-      color: "text-blue-400", 
-      bg: "bg-blue-500/10", 
-      border: "border-blue-500/20", 
-      match: "88%",
-      date: "5 hours ago"
-    },
-    { 
-      id: 3,
-      name: "Calculus Early Transcendentals", 
-      description: "9th Edition by James Stewart. Name 'Alex' written on the first page.",
-      type: "Found",
-      status: "Reported Found", 
-      location: "Student Union", 
-      category: "Books",
-      color: "text-orange-400", 
-      bg: "bg-orange-500/10", 
-      border: "border-orange-500/20", 
-      match: null,
-      date: "1 day ago"
-    },
-    { 
-      id: 4,
-      name: "Car Keys with Keychain", 
-      description: "Toyota key with a red leather keychain and a small flashlight.",
-      type: "Found",
-      status: "Reported Found", 
-      location: "Gym", 
-      category: "Essentials",
-      color: "text-orange-400", 
-      bg: "bg-orange-500/10", 
-      border: "border-orange-500/20", 
-      match: null,
-      date: "3 hours ago"
+  const [items, setItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
+
+  useEffect(() => {
+    async function fetchLostFound() {
+      try {
+        const { data, error } = await supabase
+          .from("listings")
+          .select("*")
+          .in("type", ["Lost", "Found"])
+          .eq("status", "Active");
+
+        if (error) throw error;
+        
+        if (data) {
+          const formatted = data.map(item => ({
+            id: item.id,
+            name: item.title,
+            description: item.description || "",
+            type: item.type,
+            status: item.status === "Active" ? "Searching" : item.status,
+            location: item.location || "Campus",
+            category: item.category || "General",
+            color: item.type === "Lost" ? "text-emerald-400" : "text-orange-400",
+            bg: item.type === "Lost" ? "bg-emerald-500/10" : "bg-orange-500/10",
+            border: item.type === "Lost" ? "border-emerald-500/20" : "border-orange-500/20",
+            glow: item.type === "Lost" ? "shadow-[0_0_20px_rgba(16,185,129,0.1)]" : "shadow-[0_0_20px_rgba(249,115,22,0.1)]",
+            match: null,
+            date: new Date(item.created_at).toLocaleDateString()
+          }));
+          setItems(formatted);
+        }
+      } catch (error) {
+        console.error("Error fetching lost/found:", error);
+      } finally {
+        setLoadingItems(false);
+      }
     }
-  ];
+    fetchLostFound();
+  }, []);
 
   const filteredItems = items.filter(item => {
     const matchesTab = activeTab === "All" || item.type === activeTab;

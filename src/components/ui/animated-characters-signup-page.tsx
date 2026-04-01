@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/lib/toast-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import ButtonWithIcon from "@/components/ui/button-with-icon";
 import { Input } from "@/components/ui/input";
@@ -185,6 +186,7 @@ const EyeBall = ({
 function SignUpPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { signUpWithEmail, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -347,32 +349,29 @@ function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password || !name) {
+      setError("Please fill out all fields.");
+      return;
+    }
     setError("");
     setIsLoading(true);
 
-    // Simulate API delay (quick)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Bypass authentication for development convenience
-    console.log("✅ Sign up successful (Bypassed)!");
-    
-    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
-    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
-    localStorage.setItem("userRole", role);
-    
-    toast({
-      title: "Account Created",
-      message: `Welcome to CampusFlow! Your account has been created successfully.`,
-      variant: "success",
-    });
-    
-    if (role === "doctor") {
-      navigate("/staff-dashboard");
-    } else {
+    try {
+      await signUpWithEmail(email, password, name);
+      
+      toast({
+        title: "Account Created",
+        message: `Welcome to CampusFlow! Your account has been created successfully.`,
+        variant: "success",
+      });
+      
       navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Signup failed:", err);
+      setError(err.message || "Failed to create account.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -708,6 +707,17 @@ function SignUpPage() {
               variant="outline" 
               className="w-full h-12 bg-background border-border/60 hover:bg-accent"
               type="button"
+              onClick={async () => {
+                try {
+                  setError("");
+                  setIsLoading(true);
+                  await signInWithGoogle();
+                } catch (err: any) {
+                  setError(err.message || "Failed to sign up with Google");
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
             >
               <Mail className="mr-2 size-5" />
               Sign up with Google

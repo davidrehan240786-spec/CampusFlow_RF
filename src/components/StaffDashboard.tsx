@@ -52,6 +52,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/ui/search-bar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/lib/toast-context";
+import { supabase } from "@/lib/supabase";
 
 
 // --- Types ---
@@ -149,6 +150,31 @@ const NavItemComponent = ({ item, activeSection, setActiveSection }: { item: Nav
 // --- Section Views ---
 
 const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Section) => void }) => {
+  const [recentStudents, setRecentStudents] = useState<any[]>([]);
+  const [stats, setStats] = useState({ totalStudents: 0, pendingReports: 12, newListings: 0 });
+
+  useEffect(() => {
+    async function fetchDashboardData() {
+      const { data: studentsData } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'student')
+        .order('created_at', { ascending: false })
+        .limit(4);
+      if (studentsData) setRecentStudents(studentsData);
+
+      const { count: studentsCount } = await supabase.from('users').select('*', { count: 'exact', head: true }).eq('role', 'student');
+      const { count: listingsCount } = await supabase.from('listings').select('*', { count: 'exact', head: true }).gte('created_at', new Date(Date.now() - 86400000).toISOString());
+      
+      setStats(prev => ({
+        ...prev,
+        totalStudents: studentsCount || 1240,
+        newListings: listingsCount || 45
+      }));
+    }
+    fetchDashboardData();
+  }, []);
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -158,7 +184,7 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
           </div>
           <div>
             <p className="text-sm text-secondary font-medium">Active Reports</p>
-            <p className="text-2xl font-bold text-white tracking-tight">12 Pending</p>
+            <p className="text-2xl font-bold text-white tracking-tight">{stats.pendingReports} Pending</p>
           </div>
         </Card>
         <Card className="flex items-center gap-4">
@@ -167,7 +193,7 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
           </div>
           <div>
             <p className="text-sm text-secondary font-medium">Verified Students</p>
-            <p className="text-2xl font-bold text-white tracking-tight">1,240 Total</p>
+            <p className="text-2xl font-bold text-white tracking-tight">{stats.totalStudents} Total</p>
           </div>
         </Card>
         <Card className="flex items-center gap-4">
@@ -176,7 +202,7 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
           </div>
           <div>
             <p className="text-sm text-secondary font-medium">New Listings</p>
-            <p className="text-2xl font-bold text-white tracking-tight">45 Today</p>
+            <p className="text-2xl font-bold text-white tracking-tight">{stats.newListings} Today</p>
           </div>
         </Card>
         <Card className="flex items-center gap-4">
@@ -198,7 +224,7 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
               Recent Students
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {STUDENTS.slice(0, 2).map((student) => (
+              {recentStudents.slice(0, 2).map((student) => (
                 <Card key={student.id} className={cn(
                   "border-white/10 glass group hover:border-white/20",
                   student.status === "Flagged" && "border-red-500/20 bg-red-500/5"
@@ -217,19 +243,19 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
                       {student.status}
                     </span>
                   </div>
-                  <h4 className="font-bold text-white mb-1 tracking-tight">{student.name}</h4>
-                  <p className="text-sm text-secondary">{student.major} • {student.lastActive}</p>
+                  <h4 className="font-bold text-white mb-1 tracking-tight">{student.full_name || student.email}</h4>
+                  <p className="text-sm text-secondary">{student.major || 'Undeclared'} • {new Date(student.last_active).toLocaleDateString()}</p>
                   <div className="mt-4 flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
                       <div 
                         className={cn(
                           "h-full rounded-full transition-all duration-1000",
-                          student.trustScore > 80 ? "bg-emerald-500" : student.trustScore > 60 ? "bg-orange-500" : "bg-red-500"
+                          (student.trust_score || 100) > 80 ? "bg-emerald-500" : (student.trust_score || 100) > 60 ? "bg-orange-500" : "bg-red-500"
                         )}
-                        style={{ width: `${student.trustScore}%` }}
+                        style={{ width: `${student.trust_score || 100}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-bold text-white/40">{student.trustScore}% Trust</span>
+                    <span className="text-[10px] font-bold text-white/40">{student.trust_score || 100}% Trust</span>
                   </div>
                   <Button 
                     variant="ghost" 
@@ -308,6 +334,20 @@ const DashboardView = ({ setActiveSection }: { setActiveSection: (section: Secti
 
 const StudentsView = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [students, setStudents] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchStudents() {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('role', 'student')
+        .order('created_at', { ascending: false });
+      
+      if (data) setStudents(data);
+    }
+    fetchStudents();
+  }, []);
   
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -331,21 +371,21 @@ const StudentsView = () => {
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {STUDENTS.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
+        {students.filter(p => (p.full_name || p.email).toLowerCase().includes(searchQuery.toLowerCase())).map((student) => (
           <Card key={student.id} className="group hover:border-white/20">
             <div className="flex items-center gap-4 mb-6">
               <div className="size-14 rounded-2xl bg-white/5 flex items-center justify-center text-white/40 group-hover:bg-white/10 transition-colors">
                 <User className="size-8" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-white tracking-tight">{student.name}</h4>
-                <p className="text-sm text-secondary">ID: {student.id} • {student.major}</p>
+                <h4 className="text-xl font-bold text-white tracking-tight">{student.full_name || student.email}</h4>
+                <p className="text-sm text-secondary">ID: {student.id.substring(0, 8)} • {student.major || 'Undeclared'}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Last Active</p>
-                <p className="text-sm text-white/80 font-medium">{student.lastActive}</p>
+                <p className="text-sm text-white/80 font-medium">{new Date(student.last_active).toLocaleDateString()}</p>
               </div>
               <div className="p-3 rounded-xl bg-white/5 border border-white/5">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Status</p>
@@ -366,6 +406,19 @@ const StudentsView = () => {
 };
 
 const ListingsView = () => {
+  const [listings, setListings] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function fetchListings() {
+      const { data } = await supabase
+        .from('listings')
+        .select('*, seller:users(full_name, email)')
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (data) setListings(data);
+    }
+    fetchListings();
+  }, []);
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <SectionHeader title="Marketplace Listings" subtitle="Review and moderate campus marketplace items." />
@@ -378,19 +431,15 @@ const ListingsView = () => {
               <Button variant="ghost" className="text-xs font-bold uppercase tracking-widest text-white/40 hover:text-white">View All</Button>
             </div>
             <div className="space-y-4">
-              {[
-                { name: "Calculus Textbook", student: "Sarah Johnson", date: "2 hours ago", type: "Sale" },
-                { name: "Lost Keys - Library", student: "Michael Chen", date: "5 hours ago", type: "Lost" },
-                { name: "Dorm Mini Fridge", student: "Emma Wilson", date: "1 day ago", type: "Sale" },
-              ].map((listing, i) => (
-                <div key={i} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all cursor-pointer">
+              {listings.map((listing, i) => (
+                <div key={listing.id || i} className="p-4 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between group hover:bg-white/10 transition-all cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="size-10 rounded-lg bg-white/5 flex items-center justify-center text-white/40">
                       <FileText className="size-5" />
                     </div>
                     <div>
-                      <h4 className="text-sm font-bold text-white">{listing.name}</h4>
-                      <p className="text-xs text-secondary">{listing.student} • {listing.date}</p>
+                      <h4 className="text-sm font-bold text-white">{listing.title}</h4>
+                      <p className="text-xs text-secondary">{listing.seller?.full_name || listing.seller?.email || 'Unknown User'} • {new Date(listing.created_at).toLocaleDateString()}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

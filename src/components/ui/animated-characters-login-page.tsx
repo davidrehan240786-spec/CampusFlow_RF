@@ -187,7 +187,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, signInWithEmail } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -351,32 +351,30 @@ function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
     setError("");
     setIsLoading(true);
 
-    // Simulate API delay (quick)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Bypass authentication for development convenience
-    console.log("✅ Login successful (Bypassed)!");
-    
-    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
-    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
-    localStorage.setItem("userRole", role);
-    
-    toast({
-      title: "Login Successful",
-      message: `Welcome back to CampusFlow!`,
-      variant: "success",
-    });
-    
-    if (role === "doctor") {
-      navigate("/staff-dashboard");
-    } else {
+    try {
+      await signInWithEmail(email, password);
+      
+      toast({
+        title: "Login Successful",
+        message: `Welcome back to CampusFlow!`,
+        variant: "success",
+      });
+      
+      // Let the routing handle the redirect once the auth context updates
       navigate("/dashboard");
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError(err.message || "Failed to sign in. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
