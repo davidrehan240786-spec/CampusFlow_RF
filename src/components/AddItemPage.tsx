@@ -1,19 +1,12 @@
 import * as React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { 
   ArrowLeft, 
-  Upload, 
-  X, 
   MapPin, 
   Tag, 
-  Clock, 
-  MessageSquare, 
-  Phone, 
   Sparkles,
-  CheckCircle2,
   Info,
   ChevronDown,
-  Image as ImageIcon,
   DollarSign
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -25,8 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/toast-context";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/services/firebase/firebase";
+import { db } from "@/services/firebase/firebase";
 
 // --- Types ---
 
@@ -34,49 +26,33 @@ interface ItemData {
   title: string;
   description: string;
   category: string;
-  type: "Sell" | "Donate";
-  price: string;
-  isFree: boolean;
-  images: string[];
+  type: "sell" | "donate";
+  price: string; // keep as string for input; convert to number on submit
   location: string;
   tags: string[];
-  condition: "New" | "Good" | "Used";
-  meetupLocation: string;
-  meetupTime: string;
-  allowPhone: boolean;
 }
 
 const CATEGORIES = ["Books", "Electronics", "Clothing", "Essentials"];
 const LOCATIONS = ["Library", "Cafeteria", "Block A", "North Campus", "South Hall"];
 const TAG_OPTIONS = ["Urgent", "Negotiable", "Like New"];
-const CONDITIONS = ["New", "Good", "Used"];
-const TIME_SLOTS = ["Morning (8AM - 12PM)", "Afternoon (12PM - 4PM)", "Evening (4PM - 8PM)"];
 
 export default function AddItemPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<ItemData>({
     title: "",
     description: "",
     category: "Books",
-    type: "Sell",
+    type: "sell",
     price: "",
-    isFree: false,
-    images: [],
     location: "Library",
     tags: [],
-    condition: "Good",
-    meetupLocation: "Library",
-    meetupTime: "Afternoon (12PM - 4PM)",
-    allowPhone: false,
   });
 
-  const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [smartAssist, setSmartAssist] = useState<string | null>(null);
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -96,110 +72,84 @@ export default function AddItemPage() {
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files) return;
+  useEffect(() => {
+    if (!formData.title.trim()) {
+      setSmartAssist(null);
+      return;
+    }
+    if (formData.category === "Books") setSmartAssist("Detected: Academic Textbook");
+    else if (formData.category === "Electronics") setSmartAssist("Detected: Electronic Device");
+    else setSmartAssist("Detected: Item for Marketplace");
+  }, [formData.title, formData.category]);
 
-    if (formData.images.length + files.length > 3) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSuccessMessage(null);
+
+    const trimmedTitle = formData.title.trim();
+    const trimmedDescription = formData.description.trim();
+    const trimmedLocation = formData.location.trim();
+    const trimmedPrice = formData.price.trim();
+
+    if (!trimmedTitle) {
       toast({
-        title: "Limit Exceeded",
-        message: "You can only upload up to 3 images.",
+        title: "Missing Fields",
+        message: "Please enter a title.",
         variant: "destructive"
       });
       return;
     }
 
-    setIsUploading(true);
-    const newFiles = Array.from(files);
-    const newImagesUrls = newFiles.map((file) => URL.createObjectURL(file as Blob));
-
-    setImageFiles(prev => [...prev, ...newFiles]);
-    setFormData(prev => ({ ...prev, images: [...prev.images, ...newImagesUrls] }));
-    setIsUploading(false);
-    
-    // Smart Assist Trigger
-    if (formData.category === "Books") setSmartAssist("Detected: Academic Textbook");
-    else if (formData.category === "Electronics") setSmartAssist("Detected: Electronic Device");
-    else setSmartAssist("Detected: Item for Marketplace");
-  };
-
-  const removeImage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }));
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
-    if (formData.images.length <= 1) setSmartAssist(null);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.title || (!formData.price && !formData.isFree)) {
+    const priceNumber =
+      formData.type === "donate" ? 0 : trimmedPrice === "" ? NaN : Number(trimmedPrice);
+    if (formData.type !== "donate" && (!Number.isFinite(priceNumber) || priceNumber < 0)) {
       toast({
-        title: "Missing Fields",
-        message: "Please fill in the required fields.",
-        variant: "destructive"
+        title: "Invalid Price",
+        message: "Please enter a valid price (or choose Donate).",
+        variant: "destructive",
       });
       return;
     }
 
     setIsSubmitting(true);
-    let downloadUrls: string[] = [];
 
     try {
-      // 1. Upload images
-      for (const file of imageFiles) {
-        const storageRef = ref(storage, `items/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(snapshot.ref);
-        downloadUrls.push(url);
-      }
-
-      // 2. Save document to Firestore
-      await addDoc(collection(db, "items"), {
-        title: formData.title,
-        description: formData.description,
-        price: formData.isFree ? 0 : Number(formData.price),
+      const payload = {
+        title: trimmedTitle,
+        description: trimmedDescription,
+        price: priceNumber,
         category: formData.category,
         type: formData.type,
-        images: downloadUrls,
-        location: formData.location,
+        location: trimmedLocation,
         tags: formData.tags,
-        condition: formData.condition,
-        meetupLocation: formData.meetupLocation,
-        meetupTime: formData.meetupTime,
-        allowPhone: formData.allowPhone,
-        userId: "mock-user-123", // mock user ID
+        userId: "mock-user-123",
         status: "available",
-        createdAt: serverTimestamp()
-      });
+        createdAt: serverTimestamp(),
+      };
 
-      // 3. Reset form and show success
+      console.log("[AddItemPage] addDoc() starting", payload);
+      const docRef = await addDoc(collection(db, "items"), payload);
+      console.log("[AddItemPage] addDoc() success id=", docRef.id);
+
       toast({
         title: "Success!",
-        message: "Your item has been posted to the marketplace.",
+        message: "Your ad has been posted to the marketplace.",
         variant: "success"
       });
+      setSuccessMessage("Posted successfully.");
 
       setFormData({
         title: "",
         description: "",
         category: "Books",
-        type: "Sell",
+        type: "sell",
         price: "",
-        isFree: false,
-        images: [],
         location: "Library",
         tags: [],
-        condition: "Good",
-        meetupLocation: "Library",
-        meetupTime: "Afternoon (12PM - 4PM)",
-        allowPhone: false,
       });
-      setImageFiles([]);
       setSmartAssist(null);
     } catch (error) {
-      console.error("Error adding item:", error);
+      console.error("[AddItemPage] addDoc() failed:", error);
       toast({
         title: "Error",
         message: "Failed to post item. Please try again.",
@@ -237,6 +187,12 @@ export default function AddItemPage() {
           <h1 className="text-4xl md:text-5xl font-black tracking-tighter uppercase mb-2">Post an Item</h1>
           <p className="text-secondary font-medium">Fill in the details to list your item in the marketplace.</p>
         </div>
+
+        {successMessage ? (
+          <div className="mb-8 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-6 py-4 text-sm font-bold text-emerald-300">
+            {successMessage}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
           {/* Form Section */}
@@ -303,17 +259,23 @@ export default function AddItemPage() {
                   <div className="space-y-2">
                     <Label className="text-xs font-bold uppercase tracking-widest text-white/40">Listing Type</Label>
                     <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 h-14">
-                      {["Sell", "Donate"].map((type) => (
+                      {["sell", "donate"].map((type) => (
                         <button
                           key={type}
                           type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, type: type as any, isFree: type === "Donate" }))}
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              type: type as "sell" | "donate",
+                              price: type === "donate" ? "0" : prev.price,
+                            }))
+                          }
                           className={cn(
                             "flex-1 rounded-xl font-bold text-sm transition-all",
                             formData.type === type ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"
                           )}
                         >
-                          {type}
+                          {type === "sell" ? "Sell" : "Donate"}
                         </button>
                       ))}
                     </div>
@@ -337,102 +299,25 @@ export default function AddItemPage() {
                         name="price"
                         type="number"
                         placeholder="0.00"
-                        disabled={formData.isFree}
-                        value={formData.isFree ? "0" : formData.price}
+                        disabled={formData.type === "donate"}
+                        value={formData.type === "donate" ? "0" : formData.price}
                         onChange={handleInputChange}
                         className="h-14 pl-10 bg-white/5 border-white/10 rounded-2xl focus:border-white/20 transition-all text-lg font-bold"
                       />
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 h-14 px-6 bg-white/5 border border-white/10 rounded-2xl cursor-pointer hover:bg-white/10 transition-all group" onClick={() => setFormData(prev => ({ ...prev, isFree: !prev.isFree, type: !prev.isFree ? "Donate" : "Sell" }))}>
-                    <div className={cn(
-                      "size-5 rounded-md border-2 flex items-center justify-center transition-all",
-                      formData.isFree ? "bg-white border-white" : "border-white/20 group-hover:border-white/40"
-                    )}>
-                      {formData.isFree && <CheckCircle2 className="size-3 text-black" />}
-                    </div>
-                    <span className="text-sm font-bold text-white/60 group-hover:text-white transition-colors">Mark as Free / Donation</span>
+                  <div className="flex items-center gap-3 h-14 px-6 bg-white/5 border border-white/10 rounded-2xl">
+                    <span className="text-sm font-bold text-white/60">
+                      {formData.type === "donate" ? "Donation" : "For sale"}
+                    </span>
                   </div>
                 </div>
               </section>
 
-              {/* 4. Image Upload */}
-              <section className="space-y-6">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">04</div>
-                    <h3 className="text-xl font-bold tracking-tight">Image Upload</h3>
-                  </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Max 3 Images</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className={cn(
-                      "md:col-span-1 aspect-square rounded-3xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:border-white/30 hover:bg-white/[0.02] transition-all group relative overflow-hidden",
-                      formData.images.length >= 3 && "opacity-50 pointer-events-none"
-                    )}
-                  >
-                    <input 
-                      type="file" 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      accept="image/*" 
-                      multiple 
-                      onChange={handleImageUpload} 
-                    />
-                    {isUploading ? (
-                      <div className="flex flex-col items-center gap-2">
-                        <div className="size-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                        <span className="text-[10px] font-bold uppercase tracking-tighter text-white/40">Uploading...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="size-6 text-white/20 group-hover:text-white transition-colors mb-2" />
-                        <span className="text-[10px] font-black uppercase tracking-tighter text-white/40 group-hover:text-white transition-colors">Add Photo</span>
-                      </>
-                    )}
-                  </div>
-
-                  <AnimatePresence>
-                    {formData.images.map((img, idx) => (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.8 }}
-                        key={idx} 
-                        className="aspect-square rounded-3xl bg-white/5 border border-white/10 overflow-hidden relative group"
-                      >
-                        <img src={img} alt="Preview" className="size-full object-cover" />
-                        <button 
-                          type="button"
-                          onClick={() => removeImage(idx)}
-                          className="absolute top-2 right-2 size-8 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
-                        >
-                          <X className="size-4" />
-                        </button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
-
-                {smartAssist && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20"
-                  >
-                    <Sparkles className="size-4 text-emerald-400" />
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest">{smartAssist}</span>
-                  </motion.div>
-                )}
-              </section>
-
-              {/* 5. Location & Tags */}
+              {/* 4. Location & Tags */}
               <section className="space-y-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">05</div>
+                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">04</div>
                   <h3 className="text-xl font-bold tracking-tight">Location & Tags</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -478,111 +363,6 @@ export default function AddItemPage() {
                 </div>
               </section>
 
-              {/* 6. Condition */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">06</div>
-                  <h3 className="text-xl font-bold tracking-tight">Item Condition</h3>
-                </div>
-                <div className="flex p-1 bg-white/5 rounded-2xl border border-white/10 h-14">
-                  {CONDITIONS.map((cond) => (
-                    <button
-                      key={cond}
-                      type="button"
-                      onClick={() => handleSelectChange("condition", cond)}
-                      className={cn(
-                        "flex-1 rounded-xl font-bold text-sm transition-all",
-                        formData.condition === cond ? "bg-white text-black shadow-lg" : "text-white/40 hover:text-white"
-                      )}
-                    >
-                      {cond}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* 7. Meetup Preference */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">07</div>
-                  <h3 className="text-xl font-bold tracking-tight">Meetup Preference</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-white/40">Preferred Spot</Label>
-                    <div className="relative">
-                      <select 
-                        value={formData.meetupLocation}
-                        onChange={(e) => handleSelectChange("meetupLocation", e.target.value)}
-                        className="w-full h-14 pl-12 pr-12 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white appearance-none focus:outline-none focus:border-white/20 transition-all"
-                      >
-                        {LOCATIONS.map(loc => <option key={loc} value={loc} className="bg-zinc-900">{loc}</option>)}
-                      </select>
-                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-white/20 pointer-events-none" />
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-white/20 pointer-events-none" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-white/40">Preferred Time</Label>
-                    <div className="relative">
-                      <select 
-                        value={formData.meetupTime}
-                        onChange={(e) => handleSelectChange("meetupTime", e.target.value)}
-                        className="w-full h-14 pl-12 pr-12 bg-white/5 border border-white/10 rounded-2xl text-sm font-bold text-white appearance-none focus:outline-none focus:border-white/20 transition-all"
-                      >
-                        {TIME_SLOTS.map(slot => <option key={slot} value={slot} className="bg-zinc-900">{slot}</option>)}
-                      </select>
-                      <Clock className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-white/20 pointer-events-none" />
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-5 text-white/20 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 8. Contact Preference */}
-              <section className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 font-bold text-xs">08</div>
-                  <h3 className="text-xl font-bold tracking-tight">Contact Preference</h3>
-                </div>
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4">
-                    <div className="size-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400">
-                      <MessageSquare className="size-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">In-App Chat</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">Always Enabled</p>
-                    </div>
-                    <CheckCircle2 className="size-5 text-blue-400 ml-auto" />
-                  </div>
-                  <div 
-                    className={cn(
-                      "flex-1 p-4 rounded-2xl border transition-all cursor-pointer flex items-center gap-4 group",
-                      formData.allowPhone ? "bg-emerald-500/10 border-emerald-500/30" : "bg-white/5 border-white/10 hover:bg-white/10"
-                    )}
-                    onClick={() => setFormData(prev => ({ ...prev, allowPhone: !prev.allowPhone }))}
-                  >
-                    <div className={cn(
-                      "size-10 rounded-xl flex items-center justify-center transition-all",
-                      formData.allowPhone ? "bg-emerald-500/20 text-emerald-400" : "bg-white/10 text-white/20 group-hover:text-white"
-                    )}>
-                      <Phone className="size-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold">Phone Contact</p>
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">{formData.allowPhone ? "Enabled" : "Disabled"}</p>
-                    </div>
-                    <div className={cn(
-                      "size-5 rounded-md border-2 flex items-center justify-center transition-all ml-auto",
-                      formData.allowPhone ? "bg-emerald-500 border-emerald-500" : "border-white/20 group-hover:border-white/40"
-                    )}>
-                      {formData.allowPhone && <CheckCircle2 className="size-3 text-white" />}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
               {/* Action Buttons */}
               <div className="pt-10 flex flex-col md:flex-row gap-4">
                 <Button 
@@ -591,14 +371,6 @@ export default function AddItemPage() {
                   className="flex-1 h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] disabled:opacity-50"
                 >
                   {isSubmitting ? "Posting..." : "Post Item"}
-                </Button>
-                <Button 
-                  type="button"
-                  variant="outline"
-                  onClick={() => toast({ title: "Draft Saved", message: "Your listing has been saved to drafts.", variant: "default" })}
-                  className="h-16 px-10 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-lg font-bold"
-                >
-                  Save as Draft
                 </Button>
               </div>
 
@@ -621,22 +393,10 @@ export default function AddItemPage() {
                 layout
                 className="glass rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl"
               >
-                <div className="relative aspect-[4/3] bg-white/5 overflow-hidden">
-                  {formData.images.length > 0 ? (
-                    <motion.img 
-                      key={formData.images[0]}
-                      initial={{ opacity: 0, scale: 1.1 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      src={formData.images[0]} 
-                      alt="Preview" 
-                      className="size-full object-cover" 
-                    />
-                  ) : (
-                    <div className="size-full flex flex-col items-center justify-center text-white/10">
-                      <ImageIcon className="size-16 mb-4" />
-                      <span className="text-xs font-bold uppercase tracking-widest">No Image Uploaded</span>
-                    </div>
-                  )}
+                <div className="relative aspect-[4/3] bg-white/5 overflow-hidden flex items-center justify-center">
+                  <div className="size-24 rounded-3xl bg-white/10 border border-white/10 flex items-center justify-center text-white font-black text-4xl">
+                    {(formData.title.trim()[0] || formData.category[0] || "I").toUpperCase()}
+                  </div>
                   
                   <div className="absolute top-4 right-4">
                     <div className="size-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60">
@@ -669,8 +429,6 @@ export default function AddItemPage() {
                     </h4>
                     <div className="flex items-center gap-2 text-xs font-bold text-white/40 uppercase tracking-widest">
                       <MapPin className="size-3" /> {formData.location}
-                      <span className="size-1 rounded-full bg-white/10" />
-                      {formData.condition} Condition
                     </div>
                   </div>
 
@@ -678,24 +436,12 @@ export default function AddItemPage() {
                     <div className="flex flex-col">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-1">Price</span>
                       <span className="text-3xl font-black text-white">
-                        {formData.isFree ? "FREE" : `₹${formData.price || "0"}`}
+                        {formData.type === "donate" ? "FREE" : `₹${formData.price || "0"}`}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/5">
                       <div className="size-2 rounded-full bg-emerald-400" />
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">Verified Seller</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Clock className="size-4 text-white/20" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Meetup Preference</span>
-                      </div>
-                      <p className="text-xs font-medium text-white/60">
-                        {formData.meetupLocation} • {formData.meetupTime}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -707,7 +453,7 @@ export default function AddItemPage() {
                 <div className="space-y-1">
                   <h4 className="text-sm font-bold text-blue-400">Pro Tip</h4>
                   <p className="text-xs text-blue-400/60 leading-relaxed font-medium">
-                    Listings with clear photos and detailed descriptions sell 3x faster. Don't forget to mention any wear and tear!
+                    Clear titles and detailed descriptions help your listing get picked up faster.
                   </p>
                 </div>
               </div>

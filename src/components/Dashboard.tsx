@@ -66,6 +66,8 @@ import { useToast } from "@/lib/toast-context";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { TextRoll } from "@/components/ui/animated-menu";
+import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
+import { db } from "@/services/firebase/firebase";
 
 // --- Types ---
 
@@ -84,6 +86,75 @@ interface NavItem {
   icon: React.ElementType;
   key: string;
 }
+
+type MarketplaceItem = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  category: string;
+  type: string;
+  location: string;
+  tags: string[];
+  status: string;
+  userId: string;
+  createdAt?: Timestamp;
+};
+
+const dummyItems: MarketplaceItem[] = [
+  {
+    id: "dummy-1",
+    title: "Calculus Textbook (8th Ed.)",
+    description: "",
+    price: 450,
+    category: "Books",
+    type: "sell",
+    location: "Library",
+    tags: ["Negotiable"],
+    userId: "dummy",
+    status: "available",
+    createdAt: Timestamp.fromDate(new Date(Date.now() - 1000 * 60 * 60 * 2)),
+  },
+  {
+    id: "dummy-2",
+    title: "Lab Coat (Size M)",
+    description: "",
+    price: 0,
+    category: "Essentials",
+    type: "donate",
+    location: "Block A",
+    tags: ["Like New"],
+    userId: "dummy",
+    status: "available",
+    createdAt: Timestamp.fromDate(new Date(Date.now() - 1000 * 60 * 60 * 26)),
+  },
+  {
+    id: "dummy-3",
+    title: "Bluetooth Headphones",
+    description: "",
+    price: 1200,
+    category: "Electronics",
+    type: "sell",
+    location: "North Campus",
+    tags: ["Urgent"],
+    userId: "dummy",
+    status: "available",
+    createdAt: Timestamp.fromDate(new Date(Date.now() - 1000 * 60 * 60 * 72)),
+  },
+  {
+    id: "dummy-4",
+    title: "Desk Lamp",
+    description: "",
+    price: 250,
+    category: "Essentials",
+    type: "sell",
+    location: "South Hall",
+    tags: [],
+    userId: "dummy",
+    status: "available",
+    createdAt: Timestamp.fromDate(new Date(Date.now() - 1000 * 60 * 60 * 120)),
+  },
+];
 
 // --- Mock Data ---
 
@@ -308,79 +379,44 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
   const [activeLocation, setActiveLocation] = useState("All");
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [isFilterVisible, setIsFilterVisible] = useState(false);
+  const [items, setItems] = useState<MarketplaceItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(true);
 
   const categories = ["All", "Books", "Electronics", "Dorm", "Clothing"];
   const locations = ["All", "Library", "North Campus", "South Hall", "Student Union"];
   const tags = ["Urgent", "Verified Seller"];
 
-  const items = [
-    { 
-      id: 1,
-      name: "Calculus Early Transcendentals", 
-      category: "Books", 
-      price: 45, 
-      location: "North Campus", 
-      image: "https://picsum.photos/seed/book1/400/300",
-      tags: ["Verified Seller"],
-      trending: true,
-      date: new Date(2024, 2, 12)
-    },
-    { 
-      id: 2,
-      name: "Sony WH-1000XM4 Headphones", 
-      category: "Electronics", 
-      price: 120, 
-      location: "Library", 
-      image: "https://picsum.photos/seed/sony/400/300",
-      tags: ["Urgent"],
-      trending: true,
-      date: new Date(2024, 2, 28)
-    },
-    { 
-      id: 3,
-      name: "Modern Dorm Desk Lamp", 
-      category: "Dorm", 
-      price: 15, 
-      location: "South Hall", 
-      image: "https://picsum.photos/seed/lamp/400/300",
-      tags: [],
-      trending: false,
-      date: new Date(2024, 0, 15)
-    },
-    { 
-      id: 4,
-      name: "North Face Winter Jacket", 
-      category: "Clothing", 
-      price: 60, 
-      location: "Student Union", 
-      image: "https://picsum.photos/seed/jacket/400/300",
-      tags: ["Verified Seller"],
-      trending: false,
-      date: new Date(2023, 11, 5)
-    },
-    { 
-      id: 5,
-      name: "TI-84 Plus CE Calculator", 
-      category: "Electronics", 
-      price: 30, 
-      location: "Science Block", 
-      image: "https://picsum.photos/seed/calc/400/300",
-      tags: ["Urgent"],
-      trending: true,
-      date: new Date(2023, 10, 20)
-    },
-    { 
-      id: 6,
-      name: "Organic Chemistry Model Kit", 
-      category: "Books", 
-      price: 25, 
-      location: "Library", 
-      image: "https://picsum.photos/seed/chem/400/300",
-      tags: [],
-      trending: false,
-      date: new Date(2024, 3, 1)
-    },
-  ];
+  useEffect(() => {
+    setLoadingItems(true);
+    const q = query(collection(db, "items"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const next: MarketplaceItem[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as Partial<MarketplaceItem>;
+          return {
+            id: doc.id,
+            title: String(data.title ?? ""),
+            description: String(data.description ?? ""),
+            price: Number(data.price ?? 0),
+            category: String(data.category ?? ""),
+            type: String(data.type ?? ""),
+            location: String(data.location ?? ""),
+            tags: Array.isArray(data.tags) ? (data.tags as string[]) : [],
+            status: String(data.status ?? "available"),
+            userId: String(data.userId ?? ""),
+            createdAt: data.createdAt as Timestamp | undefined,
+          };
+        });
+        setItems(next);
+        setLoadingItems(false);
+      },
+      () => setLoadingItems(false)
+    );
+    return unsubscribe;
+  }, []);
+
+  const displayItems = !loadingItems && items.length === 0 ? dummyItems : items;
 
   const toggleTag = (tag: string) => {
     setActiveTags(prev => 
@@ -388,8 +424,8 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
     );
   };
 
-  const filteredItems = items.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredItems = displayItems.filter(item => {
+    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = activeCategory === "All" || item.category === activeCategory;
     const matchesLocation = activeLocation === "All" || item.location === activeLocation;
     const matchesPrice = item.price <= priceRange;
@@ -400,12 +436,14 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
   const sortedItems = [...filteredItems].sort((a, b) => {
     if (sortBy === "Price: Low → High") return a.price - b.price;
     if (sortBy === "Price: High → Low") return b.price - a.price;
-    if (sortBy === "Trending") return (b.trending ? 1 : 0) - (a.trending ? 1 : 0);
-    return b.date.getTime() - a.date.getTime();
+    if (sortBy === "Trending") return 0;
+    const aTime = a.createdAt?.toMillis?.() ?? 0;
+    const bTime = b.createdAt?.toMillis?.() ?? 0;
+    return bTime - aTime;
   });
 
-  const trendingItems = items.filter(item => item.trending);
-  const recentlyAdded = items.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 4);
+  const trendingItems = displayItems.slice(0, 6);
+  const recentlyAdded = displayItems.slice(0, 4);
 
   return (
     <div className="space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
@@ -613,8 +651,10 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
           {trendingItems.map((item) => (
             <div key={item.id} className="min-w-[280px] group">
               <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500">
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                <div className="relative aspect-[4/3] overflow-hidden bg-white/5 flex items-center justify-center">
+                  <div className="size-20 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white font-black text-3xl">
+                    {(item.title[0] || item.category[0] || "I").toUpperCase()}
+                  </div>
                   <div className="absolute top-3 right-3 flex flex-col gap-2">
                     <button className="size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-red-500 transition-colors">
                       <Heart className="size-4" />
@@ -626,8 +666,8 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                 </div>
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors">{item.name}</h4>
-                    <span className="font-black text-white text-lg">${item.price}</span>
+                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors">{item.title}</h4>
+                    <span className="font-black text-white text-lg">₹{item.price}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-white/40 font-bold uppercase tracking-widest">
                     <span>{item.category}</span>
@@ -653,8 +693,10 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
           {recentlyAdded.map((item) => (
             <div key={item.id} className="min-w-[280px] group">
               <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500">
-                <div className="relative aspect-[4/3] overflow-hidden">
-                  <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                <div className="relative aspect-[4/3] overflow-hidden bg-white/5 flex items-center justify-center">
+                  <div className="size-20 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-white font-black text-3xl">
+                    {(item.title[0] || item.category[0] || "I").toUpperCase()}
+                  </div>
                   <div className="absolute top-3 right-3">
                     <button className="size-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white/60 hover:text-red-500 transition-colors">
                       <Heart className="size-4" />
@@ -663,8 +705,8 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                 </div>
                 <div className="p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors line-clamp-1">{item.name}</h4>
-                    <span className="font-black text-white text-lg">${item.price}</span>
+                    <h4 className="font-bold text-white text-sm leading-tight group-hover:text-primary transition-colors line-clamp-1">{item.title}</h4>
+                    <span className="font-black text-white text-lg">₹{item.price}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] text-white/40 font-bold uppercase tracking-widest">
                     <span>{item.category}</span>
@@ -684,7 +726,9 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
             <ShoppingBag className="size-5 text-white/40" /> All Listings
           </h3>
-          <p className="text-xs font-medium text-white/40">{sortedItems.length} items found</p>
+          <p className="text-xs font-medium text-white/40">
+            {loadingItems ? "Loading…" : `${sortedItems.length} items found`}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -700,7 +744,7 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
             <p className="text-xs text-white/40 font-medium">Clear out your dorm and earn some extra cash.</p>
           </button>
 
-          {sortedItems.length > 0 ? (
+          {!loadingItems && sortedItems.length > 0 ? (
             sortedItems.map((item) => (
               <motion.div 
                 layout
@@ -710,8 +754,10 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                 className="group relative"
               >
                 <Card className="p-0 overflow-hidden border-white/5 hover:border-white/20 transition-all duration-500 h-full flex flex-col">
-                  <div className="relative aspect-[4/3] overflow-hidden">
-                    <img src={item.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" referrerPolicy="no-referrer" />
+                  <div className="relative aspect-[4/3] overflow-hidden bg-white/5 flex items-center justify-center">
+                    <div className="size-24 rounded-3xl bg-white/10 border border-white/10 flex items-center justify-center text-white font-black text-4xl">
+                      {(item.title[0] || item.category[0] || "I").toUpperCase()}
+                    </div>
                     
                     {/* Overlay on hover */}
                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
@@ -740,12 +786,12 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
 
                   <div className="p-5 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-3">
-                      <h4 className="font-bold text-white text-base leading-tight group-hover:text-primary transition-colors line-clamp-2">{item.name}</h4>
+                      <h4 className="font-bold text-white text-base leading-tight group-hover:text-primary transition-colors line-clamp-2">{item.title}</h4>
                     </div>
                     
                     <div className="mt-auto space-y-4">
                       <div className="flex items-center justify-between">
-                        <span className="font-black text-white text-xl">${item.price}</span>
+                        <span className="font-black text-white text-xl">₹{item.price}</span>
                         <div className="flex items-center gap-1 text-[10px] text-white/40 font-bold uppercase tracking-widest">
                           <MapPin className="size-3" /> {item.location}
                         </div>
@@ -753,6 +799,9 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                       
                       <div className="flex items-center justify-between pt-4 border-t border-white/5">
                         <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">{item.category}</span>
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">
+                          {item.createdAt ? new Date(item.createdAt.toMillis()).toLocaleDateString() : ""}
+                        </span>
                         <div className="flex gap-1">
                           <Button size="icon" variant="ghost" className="size-8 text-white/20 hover:text-white rounded-lg">
                             <MessageSquare className="size-4" />
@@ -770,8 +819,14 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                 <ShoppingBag className="size-10" />
               </div>
               <div>
-                <h4 className="text-xl font-bold text-white">No items found</h4>
-                <p className="text-sm text-white/40 max-w-xs mx-auto">Try adjusting your filters or search query to find what you're looking for.</p>
+                <h4 className="text-xl font-bold text-white">
+                  {loadingItems ? "Loading items…" : "No items found"}
+                </h4>
+                <p className="text-sm text-white/40 max-w-xs mx-auto">
+                  {loadingItems
+                    ? "Fetching listings from the marketplace."
+                    : "Post an item to get started, or adjust your filters."}
+                </p>
               </div>
               <Button 
                 variant="outline" 
@@ -784,7 +839,7 @@ const MarketplaceView = ({ setActiveSection }: { setActiveSection: (section: Sec
                 }}
                 className="rounded-xl border-white/10 hover:bg-white/5"
               >
-                Clear All Filters
+                {loadingItems ? "Please wait" : "Clear All Filters"}
               </Button>
             </div>
           )}
@@ -1350,8 +1405,10 @@ const InsightsView = () => (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {TOP_PERFORMING_ITEMS.map((item) => (
             <Card key={item.id} className="glass border-white/10 p-4 flex gap-4 group hover:border-white/20 transition-all">
-              <div className="size-20 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-                <img src={item.image} alt={item.title} className="size-full object-cover group-hover:scale-110 transition-transform duration-500" referrerPolicy="no-referrer" />
+              <div className="size-20 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0 flex items-center justify-center">
+                <span className="text-white/70 font-black text-2xl">
+                  {(item.title[0] || "I").toUpperCase()}
+                </span>
               </div>
               <div className="flex flex-col justify-between py-1">
                 <div>
@@ -1387,8 +1444,10 @@ const InsightsView = () => (
           <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
             {TRENDING_CAMPUS.map((item) => (
               <Card key={item.id} className="glass border-white/10 p-4 flex items-center gap-4 min-w-[280px] hover:border-white/20 transition-all">
-                <div className="size-16 rounded-xl overflow-hidden bg-white/5 flex-shrink-0">
-                  <img src={item.image} alt={item.title} className="size-full object-cover" referrerPolicy="no-referrer" />
+                <div className="size-16 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0 flex items-center justify-center">
+                  <span className="text-white/70 font-black text-xl">
+                    {(item.title[0] || "I").toUpperCase()}
+                  </span>
                 </div>
                 <div className="flex-1">
                   <h4 className="font-bold text-white text-sm mb-1">{item.title}</h4>
