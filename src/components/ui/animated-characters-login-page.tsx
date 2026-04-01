@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Eye, EyeOff, Mail, Sparkles, ArrowLeft, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/AuthProvider";
 
 
 interface PupilProps {
@@ -186,6 +187,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, loading: authLoading, signIn, signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -347,34 +349,48 @@ function LoginPage() {
   const yellowPos = calculatePosition(yellowRef);
   const orangePos = calculatePosition(orangeRef);
 
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // Simulate API delay (quick)
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Bypass authentication for development convenience
-    console.log("✅ Login successful (Bypassed)!");
-    
-    // Simple heuristic for demo: if email contains "staff", go to staff dashboard
-    const role = email.toLowerCase().includes("staff") ? "doctor" : "patient";
-    localStorage.setItem("userRole", role);
-    
-    toast({
-      title: "Login Successful",
-      message: `Welcome back to CampusFlow!`,
-      variant: "success",
-    });
-    
-    if (role === "doctor") {
-      navigate("/staff-dashboard");
-    } else {
+    try {
+      await signIn(email, password);
+      toast({
+        title: "Login Successful",
+        message: "Welcome back!",
+        variant: "success",
+      });
       navigate("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to sign in.");
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    setIsLoading(false);
+  const handleGoogle = async () => {
+    setError("");
+    setIsLoading(true);
+    try {
+      await signInWithGoogle();
+      toast({
+        title: "Login Successful",
+        message: "Signed in with Google.",
+        variant: "success",
+      });
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -692,6 +708,8 @@ function LoginPage() {
               variant="outline" 
               className="w-full h-12 bg-background border-border/60 hover:bg-accent"
               type="button"
+              onClick={() => void handleGoogle()}
+              disabled={isLoading}
             >
               <Mail className="mr-2 size-5" />
               Continue with Google

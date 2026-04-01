@@ -15,6 +15,7 @@ import Dashboard from "./components/Dashboard";
 import StaffDashboard from "./components/StaffDashboard";
 import ContactPage from "./components/ContactPage";
 import AddItemPage from "./components/AddItemPage";
+import ChatPage from "./components/ChatPage";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useScrollReveal } from "./lib/useScrollReveal";
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/staff-dashboard" element={<StaffDashboard />} />
         <Route path="/add-item" element={<AddItemPage />} />
+        <Route path="/chat" element={<ChatPage />} />
         <Route path="/contact" element={<ContactPage />} />
         <Route path="/" element={
           <>

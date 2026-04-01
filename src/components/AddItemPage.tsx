@@ -24,6 +24,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/lib/toast-context";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/services/firebase/firebase";
 
 // --- Types ---
 
@@ -71,7 +74,9 @@ export default function AddItemPage() {
   });
 
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [smartAssist, setSmartAssist] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -105,17 +110,17 @@ export default function AddItemPage() {
     }
 
     setIsUploading(true);
-    // Simulate upload
-    setTimeout(() => {
-      const newImages = Array.from(files).map((file) => URL.createObjectURL(file as Blob));
-      setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
-      setIsUploading(false);
-      
-      // Smart Assist Trigger
-      if (formData.category === "Books") setSmartAssist("Detected: Academic Textbook");
-      else if (formData.category === "Electronics") setSmartAssist("Detected: Electronic Device");
-      else setSmartAssist("Detected: Item for Marketplace");
-    }, 1000);
+    const newFiles = Array.from(files);
+    const newImagesUrls = newFiles.map((file) => URL.createObjectURL(file as Blob));
+
+    setImageFiles(prev => [...prev, ...newFiles]);
+    setFormData(prev => ({ ...prev, images: [...prev.images, ...newImagesUrls] }));
+    setIsUploading(false);
+    
+    // Smart Assist Trigger
+    if (formData.category === "Books") setSmartAssist("Detected: Academic Textbook");
+    else if (formData.category === "Electronics") setSmartAssist("Detected: Electronic Device");
+    else setSmartAssist("Detected: Item for Marketplace");
   };
 
   const removeImage = (index: number) => {
@@ -123,10 +128,11 @@ export default function AddItemPage() {
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
     }));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
     if (formData.images.length <= 1) setSmartAssist(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || (!formData.price && !formData.isFree)) {
       toast({
@@ -137,12 +143,71 @@ export default function AddItemPage() {
       return;
     }
 
-    toast({
-      title: "Success!",
-      message: "Your item has been posted to the marketplace.",
-      variant: "success"
-    });
-    navigate("/dashboard");
+    setIsSubmitting(true);
+    let downloadUrls: string[] = [];
+
+    try {
+      // 1. Upload images
+      for (const file of imageFiles) {
+        const storageRef = ref(storage, `items/${Date.now()}_${file.name}`);
+        const snapshot = await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(snapshot.ref);
+        downloadUrls.push(url);
+      }
+
+      // 2. Save document to Firestore
+      await addDoc(collection(db, "items"), {
+        title: formData.title,
+        description: formData.description,
+        price: formData.isFree ? 0 : Number(formData.price),
+        category: formData.category,
+        type: formData.type,
+        images: downloadUrls,
+        location: formData.location,
+        tags: formData.tags,
+        condition: formData.condition,
+        meetupLocation: formData.meetupLocation,
+        meetupTime: formData.meetupTime,
+        allowPhone: formData.allowPhone,
+        userId: "mock-user-123", // mock user ID
+        status: "available",
+        createdAt: serverTimestamp()
+      });
+
+      // 3. Reset form and show success
+      toast({
+        title: "Success!",
+        message: "Your item has been posted to the marketplace.",
+        variant: "success"
+      });
+
+      setFormData({
+        title: "",
+        description: "",
+        category: "Books",
+        type: "Sell",
+        price: "",
+        isFree: false,
+        images: [],
+        location: "Library",
+        tags: [],
+        condition: "Good",
+        meetupLocation: "Library",
+        meetupTime: "Afternoon (12PM - 4PM)",
+        allowPhone: false,
+      });
+      setImageFiles([]);
+      setSmartAssist(null);
+    } catch (error) {
+      console.error("Error adding item:", error);
+      toast({
+        title: "Error",
+        message: "Failed to post item. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -522,9 +587,10 @@ export default function AddItemPage() {
               <div className="pt-10 flex flex-col md:flex-row gap-4">
                 <Button 
                   type="submit"
-                  className="flex-1 h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)]"
+                  disabled={isSubmitting}
+                  className="flex-1 h-16 rounded-2xl bg-white text-black hover:bg-white/90 text-lg font-black uppercase tracking-tighter shadow-[0_20px_40px_rgba(255,255,255,0.1)] disabled:opacity-50"
                 >
-                  Post Item
+                  {isSubmitting ? "Posting..." : "Post Item"}
                 </Button>
                 <Button 
                   type="button"
