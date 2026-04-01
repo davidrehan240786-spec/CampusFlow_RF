@@ -18,6 +18,8 @@ import AddItemPage from "./components/AddItemPage";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { useScrollReveal } from "./lib/useScrollReveal";
+import { AuthProvider } from "./contexts/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 export default function App() {
   const location = useLocation();
@@ -37,16 +39,21 @@ export default function App() {
   }, [location.pathname, location.hash]);
 
   return (
-    <div className="relative min-h-screen bg-brand-bg-top overflow-x-hidden selection:bg-white selection:text-black">
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/toast-demo" element={<ToasterDemo />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/staff-dashboard" element={<StaffDashboard />} />
-        <Route path="/add-item" element={<AddItemPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/" element={
+    <AuthProvider>
+      <div className="relative min-h-screen bg-brand-bg-top overflow-x-hidden selection:bg-white selection:text-black">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/toast-demo" element={<ToasterDemo />} />
+          <Route path="/contact" element={<ContactPage />} />
+          
+          <Route element={<ProtectedRoute />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/staff-dashboard" element={<StaffDashboard />} />
+            <Route path="/add-item" element={<AddItemPage />} />
+          </Route>
+          
+          <Route path="/" element={
           <>
             <Navbar />
             
@@ -66,5 +73,6 @@ export default function App() {
         } />
       </Routes>
     </div>
+    </AuthProvider>
   );
 }

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useToast } from "@/lib/toast-context";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import ButtonWithIcon from "@/components/ui/button-with-icon";
 import { Input } from "@/components/ui/input";
@@ -186,6 +187,7 @@ function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { signInWithGoogle } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -692,6 +694,17 @@ function LoginPage() {
               variant="outline" 
               className="w-full h-12 bg-background border-border/60 hover:bg-accent"
               type="button"
+              onClick={async () => {
+                try {
+                  setError("");
+                  setIsLoading(true);
+                  await signInWithGoogle();
+                } catch (err: any) {
+                  setError(err.message || "Failed to sign in with Google");
+                  setIsLoading(false);
+                }
+              }}
+              disabled={isLoading}
             >
               <Mail className="mr-2 size-5" />
               Continue with Google

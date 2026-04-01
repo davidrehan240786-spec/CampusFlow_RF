@@ -50,6 +50,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SearchBar } from "@/components/ui/search-bar";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/lib/toast-context";
 
 
@@ -746,6 +747,7 @@ export default function StaffDashboard() {
   const [activeSection, setActiveSection] = useState<Section>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { signOut } = useAuth();
 
   const getNavLabel = (label: Section) => {
     return label;
@@ -818,7 +820,7 @@ export default function StaffDashboard() {
             <Button 
               variant="ghost" 
               className="w-full justify-start gap-3 p-0 h-auto text-red-400/60 hover:text-red-400 hover:bg-transparent font-bold text-xs uppercase tracking-widest"
-              onClick={() => navigate("/login")}
+              onClick={() => signOut()}
             >
               <LogOut className="size-4" /> Logout
             </Button>
@@ -902,7 +904,7 @@ export default function StaffDashboard() {
                 <Button 
                   variant="ghost" 
                   className="w-full justify-start gap-4 text-red-400 font-bold"
-                  onClick={() => navigate("/login")}
+                  onClick={() => signOut()}
                 >
                   <LogOut className="size-6" /> Logout
                 </Button>

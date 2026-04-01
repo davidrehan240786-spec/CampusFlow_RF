@@ -46,17 +46,10 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
-} from "recharts";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from "recharts";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1923,6 +1916,7 @@ const SettingsView = () => (
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<Section>("Dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const { signOut } = useAuth();
 
   const renderSection = () => {
     switch (activeSection) {
@@ -1978,7 +1972,10 @@ export default function Dashboard() {
             <ArrowLeft className="size-5 group-hover:-translate-x-1 transition-transform" />
             <TextRoll className="font-bold text-sm tracking-wide">Back to Home</TextRoll>
           </Link>
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-secondary hover:text-red-400 hover:bg-red-500/5 transition-all group">
+          <button 
+            onClick={() => signOut()}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-secondary hover:text-red-400 hover:bg-red-500/5 transition-all group"
+          >
             <LogOut className="size-5 group-hover:translate-x-1 transition-transform" />
             <TextRoll className="font-bold text-sm tracking-wide">Logout</TextRoll>
           </button>
